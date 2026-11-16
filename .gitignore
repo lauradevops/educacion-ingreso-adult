@@ -1,0 +1,12 @@
+# Salida generada (GitHub Actions la vuelve a crear en cada publicación)
+/_site/
+/.quarto/
+*_files/
+
+# Archivos de R y del sistema
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+
+**/*.quarto_ipynb

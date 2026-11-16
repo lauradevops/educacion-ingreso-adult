@@ -1,0 +1,285 @@
+/*-- scss:defaults --*/
+// © 2026 Laura Sofia Valencia. Identidad visual de la presentación.
+// Paleta tierra: marfil, tinta café, terracota, pino y ocre.
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+$marfil:      #FAF6F0;
+$papel:       #FFFDF9;
+$tinta:       #2A2421;
+$tinta-suave: #6B6058;
+$arena:       #EDE3D4;
+$arena-osc:   #D9C9B2;
+$linea:       #E6DACA;
+$terracota:   #B5543A;
+$terracota-cl:#F6E4DA;
+$pino:        #2F5A54;
+$pino-cl:     #E3ECE8;
+$ocre:        #C9922E;
+$ocre-cl:     #F7ECD6;
+
+$body-bg: $marfil;
+$body-color: $tinta;
+$link-color: $terracota;
+$selection-bg: $ocre-cl;
+$font-family-sans-serif: "Manrope", "Helvetica Neue", Arial, sans-serif;
+$font-family-monospace: "JetBrains Mono", Menlo, monospace;
+$presentation-font-size-root: 30px;
+$presentation-heading-font: "Fraunces", Georgia, serif;
+$presentation-heading-color: $tinta;
+$presentation-heading-font-weight: 600;
+$presentation-h2-font-size: 1.32em;
+$code-block-font-size: 0.45em;
+$code-color: $terracota;
+$code-block-bg: #F4EEE5;
+
+/*-- scss:rules --*/
+
+.reveal .slides { text-align: left; }
+.reveal .slides section { padding-top: 4px; }
+.reveal p, .reveal li { line-height: 1.45; }
+.reveal strong { color: $tinta; font-weight: 800; }
+.reveal em { color: inherit; }
+.reveal ul li::marker { color: $terracota; }
+.reveal .columns { display: flex; gap: 40px; }
+.reveal .columns > .column { min-width: 0; }
+
+// ---- Encabezado: etiqueta del requisito + título --------------------------
+.reveal h2 {
+  letter-spacing: -0.015em; line-height: 1.1; font-optical-sizing: auto;
+  margin: 0 0 0.6em 0; padding-bottom: 0.35em; position: relative;
+  border-bottom: 1px solid $linea;
+}
+.reveal h2 .etiqueta {
+  display: block; width: fit-content; margin-bottom: 0.45em;
+  font-family: "Manrope", sans-serif; font-size: 0.36em; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: $tinta-suave;
+}
+.reveal h2 .etiqueta .num { color: $terracota; margin-right: 0.5em; }
+
+// ---- Portada ------------------------------------------------------------------
+.reveal section.portada-slide > h2 { display: none; }
+.reveal .portada { display: grid; grid-template-columns: 1.15fr 1fr; gap: 70px; align-items: center; height: 820px; }
+.reveal .portada .institucion { font-size: 0.5em; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: $tinta-suave; }
+.reveal .portada .titulo-portada {
+  font-family: "Fraunces", serif; font-weight: 600; font-size: 3.4em; line-height: 0.98;
+  letter-spacing: -0.03em; margin: 0.25em 0 0.25em; color: $tinta;
+}
+.reveal .portada .titulo-portada em { color: $terracota; font-style: italic; font-weight: 500; }
+.reveal .portada .pregunta { font-family: "Fraunces", serif; font-size: 0.98em; line-height: 1.35; color: $tinta-suave; max-width: 92%; }
+.reveal .portada .autora { margin-top: 1.4em; padding-top: 0.6em; border-top: 2px solid $terracota; width: fit-content; }
+.reveal .portada .autora strong { display: block; font-size: 0.95em; }
+.reveal .portada .autora span { font-size: 0.55em; color: $tinta-suave; }
+.reveal .heroe { background: $papel; border: 1px solid $linea; border-radius: 22px; padding: 30px 32px 22px; box-shadow: 0 18px 40px rgba(42, 36, 33, 0.07); }
+.reveal .heroe .heroe-titulo { font-size: 0.48em; font-weight: 700; color: $tinta-suave; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 18px; }
+.reveal .heroe .barras { display: flex; align-items: flex-end; gap: 14px; height: 330px; border-bottom: 2px solid $tinta; }
+.reveal .heroe .barra { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+.reveal .heroe .barra b { font-size: 0.5em; font-weight: 800; color: $tinta; margin-bottom: 6px; }
+.reveal .heroe .barra i { display: block; width: 100%; border-radius: 6px 6px 0 0; }
+.reveal .heroe .etqs { display: flex; gap: 14px; margin-top: 8px; }
+.reveal .heroe .etqs span { flex: 1; text-align: center; font-size: 0.38em; color: $tinta-suave; line-height: 1.2; }
+.reveal .heroe .heroe-nota { font-size: 0.4em; color: $tinta-suave; margin-top: 14px; }
+
+// ---- Ruta de la exposición (línea de proceso) -----------------------------------
+.reveal .linea-ruta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; margin: 40px 0 34px; position: relative; }
+.reveal .linea-ruta::before { content: ""; position: absolute; top: 31px; left: 8%; right: 8%; height: 2px; background: $arena-osc; }
+.reveal .linea-ruta a { position: relative; text-decoration: none; color: $tinta; text-align: center; padding: 0 10px; }
+.reveal .linea-ruta .n {
+  display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+  background: $papel; border: 2px solid $terracota; color: $terracota;
+  font-family: "Fraunces", serif; font-size: 0.95em; font-weight: 600; transition: all .2s;
+}
+.reveal .linea-ruta a:hover .n { background: $terracota; color: $papel; }
+.reveal .linea-ruta .t { display: block; font-size: 0.6em; font-weight: 800; line-height: 1.25; }
+.reveal .linea-ruta .d { display: block; font-size: 0.46em; color: $tinta-suave; margin-top: 6px; line-height: 1.35; }
+.reveal .nota-base { display: flex; gap: 28px; justify-content: center; }
+.reveal .nota-base > div { background: $papel; border: 1px solid $linea; border-radius: 16px; padding: 18px 26px; font-size: 0.56em; line-height: 1.45; max-width: 560px; }
+.reveal .nota-base p { margin: 0; }
+
+// ---- Franja «qué · por qué · cómo» ---------------------------------------------
+.reveal .ruta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; margin: -6px 0 26px; }
+.reveal .ruta > div { font-size: 0.5em; line-height: 1.4; color: $tinta-suave; border-top: 3px solid $arena-osc; padding-top: 8px; }
+.reveal .ruta > div:nth-child(1) { border-top-color: $terracota; }
+.reveal .ruta > div:nth-child(2) { border-top-color: $ocre; }
+.reveal .ruta > div:nth-child(3) { border-top-color: $pino; }
+.reveal .ruta p { margin: 0; }
+.reveal .ruta strong { display: block; color: $tinta; font-size: 0.82em; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
+
+// ---- Código y guía de lectura ---------------------------------------------------
+.reveal .titulo-codigo { display: block; font-size: 0.42em; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: $tinta-suave; margin: 0 0 6px 2px; }
+.reveal div.sourceCode { margin: 0 0 14px 0; border-radius: 12px; border: none; background: $code-block-bg; box-shadow: none; }
+.reveal pre { box-shadow: none; margin: 0; width: 100%; background: transparent; }
+.reveal pre code { max-height: 470px; line-height: 1.5; padding: 12px 14px; background: transparent; color: #3B332E; }
+.reveal pre code, .reveal code { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+.reveal code { font-size: 0.9em; }
+.reveal pre code span.co { color: #9A8A7C; font-style: italic; }
+.reveal pre code span.st { color: $pino; }
+.reveal pre code span.fu { color: $terracota; }
+.reveal pre code span.dv, .reveal pre code span.fl { color: #8A5A12; }
+.reveal pre code span.ot, .reveal pre code span.op { color: #6B6058; }
+.reveal pre code span.kw { color: $pino; font-weight: 600; }
+.reveal .guia { font-size: 0.5em; line-height: 1.45; margin: 2px 0 6px 2px; }
+.reveal .guia p { margin: 0 0 0.45em; padding-left: 7.6em; text-indent: -7.6em; }
+.reveal .guia .g { display: inline-block; width: 8.6em; text-indent: 0; font-size: 0.82em; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: $terracota; }
+.reveal .guia code { background: $arena; padding: 1px 5px; border-radius: 4px; font-size: 0.92em; color: $tinta; }
+
+// ---- Claves de interpretación ----------------------------------------------------
+.reveal .claves { font-size: 0.58em; line-height: 1.45; border-left: 3px solid $terracota; padding: 2px 0 2px 20px; margin: 18px 0 4px; }
+.reveal .claves p { margin: 0 0 0.45em; }
+.reveal .claves ul { margin: 0; padding-left: 1.1em; }
+.reveal .claves li { margin-bottom: 0.4em; }
+.reveal .claves strong, .reveal .cifra { color: $terracota; }
+.reveal .claves .titulo-caja { color: $tinta; }
+.reveal .claves.pino { border-left-color: $pino; }
+.reveal .claves.pino strong { color: $pino; }
+.reveal .titulo-caja { display: block; font-size: 0.78em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: $tinta-suave; margin-bottom: 0.4em; }
+
+// ---- Tarjetas y bloques -----------------------------------------------------------
+.reveal .tarjeta { background: $papel; border: 1px solid $linea; border-radius: 18px; padding: 22px 26px; font-size: 0.56em; line-height: 1.5; }
+.reveal .tarjeta p { margin: 0.25em 0; }
+.reveal .tarjeta ul { margin: 0.3em 0 0 1em; }
+.reveal .tarjeta li { margin-bottom: 0.3em; }
+.reveal .tarjeta .titulo-caja { color: $terracota; }
+.reveal .tarjetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.reveal .pregunta-central { font-family: "Fraunces", serif; font-size: 1.22em; font-weight: 500; line-height: 1.22; color: $tinta; margin: 6px 0 28px; }
+.reveal .pregunta-central strong { color: $terracota; font-weight: 600; }
+.reveal .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 26px; }
+.reveal .rol { border-top: 3px solid $arena-osc; padding-top: 10px; font-size: 0.56em; line-height: 1.4; }
+.reveal .rol:nth-child(1) { border-top-color: $pino; }
+.reveal .rol:nth-child(2) { border-top-color: $terracota; }
+.reveal .rol p { margin: 0; }
+.reveal .rol .titulo-caja { margin-bottom: 4px; }
+  .reveal .rol .valor { display: block; margin: 2px 0 4px; font-family: "Fraunces", serif; font-size: 1.45em; font-weight: 600; line-height: 1.15; color: $tinta; }
+.reveal .hipotesis { background: $papel; border: 1px solid $linea; border-radius: 16px; padding: 18px 24px; font-size: 0.6em; line-height: 1.45; }
+.reveal .hipotesis p { margin: 0; }
+
+// ---- Indicadores ------------------------------------------------------------------
+.reveal .kpis { display: flex; gap: 18px; margin: 4px 0 14px; }
+.reveal .kpi { flex: 1; background: $papel; border: 1px solid $linea; border-radius: 16px; padding: 14px 18px; }
+.reveal .kpi .valor, .reveal .kpi .rotulo { display: block; }
+.reveal .kpi .valor { font-family: "Fraunces", serif; font-size: 1.4em; font-weight: 600; line-height: 1.05; color: $tinta; }
+.reveal .kpi .valor.acento { color: $terracota; }
+.reveal .kpi .valor.pino { color: $pino; }
+.reveal .kpi .rotulo { font-size: 0.42em; color: $tinta-suave; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px; line-height: 1.3; }
+
+// ---- Diagrama de depuración -------------------------------------------------------
+.reveal .flujo { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin: 4px 0 26px; }
+.reveal .paso { position: relative; padding: 0 14px; text-align: left; }
+.reveal .paso::after { content: "→"; position: absolute; right: -10px; top: 10px; color: $arena-osc; font-size: 0.9em; }
+.reveal .paso:last-child::after { content: ""; }
+.reveal .paso .num { font-family: "Fraunces", serif; color: $terracota; font-size: 0.8em; font-weight: 600; }
+.reveal .paso .cifra-paso { display: block; font-family: "Fraunces", serif; font-size: 1.25em; font-weight: 600; color: $tinta; line-height: 1.1; margin: 4px 0; }
+.reveal .paso .cifra-paso.resta { color: $terracota; }
+.reveal .paso .txt { display: block; font-size: 0.46em; line-height: 1.35; color: $tinta-suave; }
+.reveal .paso .txt strong { color: $tinta; }
+.reveal .decisiones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.reveal .decision { background: $papel; border: 1px solid $linea; border-radius: 16px; padding: 18px 22px; font-size: 0.52em; line-height: 1.5; }
+.reveal .decision p { margin: 0.2em 0; }
+.reveal .decision .titulo-caja { color: $pino; }
+
+// ---- Escalas ----------------------------------------------------------------------
+.reveal .escalas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+.reveal .escalas > div { background: $papel; border: 1px solid $linea; border-radius: 14px; padding: 12px 16px; font-size: 0.5em; line-height: 1.4; }
+.reveal .escalas p { margin: 0; }
+.reveal .escalas strong { display: block; font-family: "Fraunces", serif; font-size: 1.25em; font-weight: 600; color: $pino; margin-bottom: 2px; }
+
+// ---- Tablas -----------------------------------------------------------------------
+.reveal table { border-collapse: collapse; margin: 0 auto 12px auto; width: 100%; background: transparent; }
+.reveal table th, .reveal table td { padding: 0.32em 0.65em !important; border: none !important; vertical-align: middle; }
+.reveal table thead th { border-bottom: 2px solid $tinta !important; font-weight: 800; color: $tinta; background: transparent; }
+.reveal table tbody tr { border-bottom: 1px solid $linea; }
+.reveal table tbody tr:last-child { border-bottom: none; }
+.reveal table caption { font-size: 0.85em; font-weight: 700; color: $tinta-suave; caption-side: top; padding-bottom: 0.4em; text-align: left; }
+.reveal .tabla-texto { font-size: 0.58em; }
+
+// ---- Pestañas ---------------------------------------------------------------------
+.reveal .panel-tabset [role="tablist"] { border-bottom: 1px solid $linea; margin-bottom: 10px; }
+.reveal .panel-tabset [role="tab"] { font-size: 0.48em; font-weight: 700; color: $tinta-suave; padding: 0.4em 1em; background: transparent; border: none; }
+.reveal .panel-tabset [role="tab"][aria-selected="true"] { color: $tinta; border-bottom: 3px solid $terracota; }
+
+// ---- Gráficos interactivos ---------------------------------------------------------
+.reveal .observablehq { margin: 0; }
+.reveal .observablehq svg { max-width: 100%; height: auto; }
+.reveal form, .reveal .observablehq form { font-family: "Manrope", sans-serif; font-size: 16px; margin: 0 0 6px 0; color: $tinta-suave; }
+.reveal form label { font-weight: 700; color: $tinta-suave; }
+.reveal form input[type="radio"] { accent-color: $terracota; margin-right: 4px; }
+.reveal .leyenda-grafico { font-size: 16px; color: $tinta-suave; margin: 2px 0 6px; }
+.reveal .leyenda-grafico .item { display: inline-flex; align-items: center; gap: 7px; margin-right: 20px; font-weight: 600; }
+.reveal .leyenda-grafico .item i { display: inline-block; width: 13px; height: 13px; border-radius: 3px; }
+.reveal .observablehq svg text { font-family: Manrope, sans-serif; }
+
+// ---- Fórmulas ---------------------------------------------------------------------
+.reveal .formula { background: $papel; border: 1px solid $linea; border-radius: 14px; padding: 2px 16px; font-size: 0.74em; margin: 6px 0 10px; }
+.reveal .eventos { font-size: 0.56em; line-height: 1.5; margin-bottom: 16px; }
+.reveal .eventos p { margin: 0.25em 0; }
+
+// ---- Resultados, limitaciones y referencias -------------------------------------------
+.reveal .respuesta { font-family: "Fraunces", serif; font-size: 0.98em; line-height: 1.32; color: $tinta; margin: 0 0 30px; max-width: 94%; }
+.reveal .respuesta strong { color: $terracota; font-weight: 600; }
+.reveal .limitaciones { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; }
+.reveal .limitacion { background: $papel; border: 1px solid $linea; border-radius: 16px; padding: 20px 26px; font-size: 0.6em; line-height: 1.5; }
+.reveal .limitacion p { margin: 0.2em 0; }
+.reveal .limitacion .titulo-caja { color: $terracota; }
+.reveal .conclusion { margin-top: 30px; font-family: "Fraunces", serif; font-size: 0.86em; line-height: 1.35; padding-left: 22px; border-left: 4px solid $pino; }
+.reveal .referencias { columns: 2; column-gap: 54px; font-size: 0.5em; line-height: 1.5; }
+.reveal .referencias p { margin: 0 0 0.9em; padding-left: 2em; text-indent: -2em; break-inside: avoid; }
+.reveal .referencias h3 { font-family: "Manrope", sans-serif; font-size: 0.92em; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: $terracota; margin: 0 0 0.7em; break-after: avoid; }
+.reveal .cierre { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: center; height: 760px; }
+.reveal .cierre .gracias { font-family: "Fraunces", serif; font-size: 3.2em; font-weight: 600; line-height: 1; color: $tinta; }
+.reveal .cierre .gracias em { color: $terracota; font-weight: 500; }
+.reveal .cierre .derechos { font-size: 0.56em; line-height: 1.6; border-left: 3px solid $terracota; padding-left: 26px; }
+.reveal .cierre .derechos p { margin: 0 0 0.8em; }
+.reveal .cierre .derechos .marca { font-weight: 800; color: $terracota; }
+
+// ---- Utilidades -------------------------------------------------------------------
+.reveal .texto-sm { font-size: 0.6em; line-height: 1.5; }
+.reveal .texto-xs { font-size: 0.46em; line-height: 1.45; color: $tinta-suave; }
+.reveal .texto-sm p, .reveal .texto-xs p { margin: 0.3em 0; }
+.reveal .centrado { text-align: center; }
+
+// ---- Diapositivas con poco contenido ---------------------------------------------------
+.reveal .slides section.amplia-10 > *:not(h2) { font-size: 1.1em; }
+.reveal .slides section.amplia-15 > *:not(h2) { font-size: 1.16em; }
+
+// ---- Pie, número de diapositiva y botón de pantalla completa ---------------------------
+.reveal .footer { font-size: 0.36em !important; color: $tinta-suave; letter-spacing: 0.04em; }
+.reveal .slide-number { font-size: 0.42em; background: transparent !important; color: $tinta-suave !important; }
+.reveal .progress { color: $terracota; height: 4px; }
+.reveal .controls { color: $terracota; }
+#boton-pantalla {
+  position: fixed; top: 14px; right: 16px; z-index: 40;
+  border: 1px solid $arena-osc; border-radius: 99px; padding: 7px 14px;
+  background: rgba(255, 253, 249, 0.9); color: $tinta;
+  font: 700 12px "Manrope", sans-serif; letter-spacing: 0.04em; cursor: pointer; opacity: 0.6; transition: opacity .2s;
+}
+#boton-pantalla:hover, #boton-pantalla:focus-visible { opacity: 1; }
+@media (max-width: 900px) { #boton-pantalla { top: 8px; right: 8px; padding: 6px 10px; font-size: 11px; } }
+.reveal section.cierre-slide > h2 { display: none; }
+
+// Diapositivas de apertura con más presencia
+.reveal section.ruta-slide .linea-ruta { margin-top: 110px; margin-bottom: 70px; font-size: 1.15em; }
+.reveal section.ruta-slide .nota-base > div { font-size: 0.64em; max-width: 620px; padding: 22px 30px; }
+.reveal section.pregunta-slide .pregunta-central { font-size: 1.6em; margin: 30px 0 46px; }
+.reveal section.pregunta-slide .roles { margin-bottom: 44px; gap: 34px; }
+.reveal section.pregunta-slide .rol { font-size: 0.68em; }
+.reveal section.pregunta-slide .hipotesis { font-size: 0.74em; padding: 22px 28px; }
+.reveal section.pregunta-slide .texto-sm { font-size: 0.68em; }
+.reveal section.contexto-slide .tarjeta { font-size: 0.64em; padding: 26px 30px; }
+.reveal section.contexto-slide .kpis { margin-top: 34px !important; }
+.reveal section.contexto-slide .kpi { padding: 20px 24px; }
+.reveal section.decisiones-slide .flujo { margin: 26px 0 44px; font-size: 1.12em; }
+.reveal section.decisiones-slide .decision { font-size: 0.62em; padding: 24px 28px; }
+
+// Ajustes de cierre: más presencia en diapositivas de texto
+.reveal .referencias { font-size: 0.6em; column-gap: 64px; margin-top: 10px; }
+.reveal .referencias p { margin-bottom: 1em; }
+.reveal section.limites-slide .limitacion { font-size: 0.72em; padding: 26px 30px; }
+.reveal section.limites-slide .limitaciones { gap: 26px 32px; margin-top: 16px; }
+.reveal section.limites-slide .conclusion { font-size: 1em; margin-top: 44px; }
+.reveal section.resultados-slide .respuesta { font-size: 1.05em; }
+.reveal .cierre .derechos { font-size: 0.66em; }
+.reveal .cierre .derechos .texto-xs { font-size: 0.8em; display: block; margin-top: 0.6em; }
+.reveal .portada .titulo-portada em { margin: 0 0.14em 0 0.06em; }
+.reveal section.decisiones-slide .decision { font-size: 0.7em; padding: 28px 30px; }
+.reveal section.decisiones-slide .flujo { font-size: 1.22em; margin-bottom: 52px; }
+.reveal .referencias { font-size: 0.66em; }

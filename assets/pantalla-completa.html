@@ -1,0 +1,21 @@
+<!-- © 2026 Laura Sofia Valencia. Botón de pantalla completa para proyectar. -->
+<button id="boton-pantalla" type="button" aria-label="Ver en pantalla completa" title="Pantalla completa (tecla F)">⛶ Pantalla completa</button>
+<script>
+(function () {
+  var boton = document.getElementById("boton-pantalla");
+  function actualizar() {
+    var activa = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    boton.textContent = activa ? "✕ Salir de pantalla completa" : "⛶ Pantalla completa";
+  }
+  boton.addEventListener("click", function () {
+    var raiz = document.documentElement;
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      (raiz.requestFullscreen || raiz.webkitRequestFullscreen).call(raiz);
+    }
+  });
+  document.addEventListener("fullscreenchange", actualizar);
+  document.addEventListener("webkitfullscreenchange", actualizar);
+})();
+</script>

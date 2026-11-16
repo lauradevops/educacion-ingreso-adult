@@ -1,0 +1,51 @@
+# © 2026 Laura Sofia Valencia. Todos los derechos reservados.
+project:
+  type: default
+  output-dir: _site
+  render:
+    - index.qmd
+
+lang: es
+
+execute:
+  freeze: auto      # los resultados de R se guardan en _freeze/ para publicar sin R
+  echo: false
+  warning: false
+  message: false
+
+format:
+  revealjs:
+    theme: [default, assets/tema.scss]
+    width: 1600
+    height: 900
+    margin: 0.05
+    center: false
+    navigation-mode: linear
+    slide-number: c/t
+    show-slide-number: all
+    hash: true
+    history: true
+    progress: true
+    controls: true
+    controls-tutorial: false
+    controls-layout: bottom-right
+    transition: fade
+    transition-speed: fast
+    background-transition: fade
+    menu:
+      side: left
+      numbers: true
+      titleSelector: "h1, h2"
+    footer: "© 2026 Laura Sofia Valencia · Todos los derechos reservados"
+    code-copy: true
+    highlight-style: pygments
+    fig-dpi: 200
+    fig-width: 10
+    fig-height: 5.6
+    preview-links: auto
+    link-external-newwindow: true
+    include-in-header: assets/encabezado.html
+    include-after-body: assets/pantalla-completa.html
+    pagetitle: "Educación e ingreso · Laura Sofia Valencia"
+    author-meta: "Laura Sofia Valencia"
+    description-meta: "Presentación académica: ¿El nivel educativo aumenta la probabilidad de ganar más de USD 50.000 al año? Análisis descriptivo y probabilístico de la base Adult (UCI)."

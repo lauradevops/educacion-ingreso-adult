@@ -1,0 +1,1572 @@
+---
+# © 2026 Laura Sofia Valencia. Todos los derechos reservados.
+# Presentación académica · Quarto + Reveal.js + Observable Plot
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::read_chunk("R/analisis.R")           # fragmentos que se muestran en cada diapositiva
+source("R/analisis.R", encoding = "UTF-8")  # ejecución completa del análisis
+```
+
+```{r}
+#| label: datos-graficos
+#| include: false
+# Tablas resumidas que se envían a los gráficos interactivos (Observable Plot).
+# Todas salen de los objetos calculados en R/analisis.R.
+d_cual <- bind_rows(
+  tab_ingreso %>% transmute(variable = "Ingreso anual", categoria = as.character(INGRESO), n, p = Porcentaje),
+  tab_sexo    %>% transmute(variable = "Sexo",          categoria = as.character(SEXO),    n, p = Porcentaje))
+d_edu <- tab_edu %>% transmute(nivel = as.character(NIVEL_EDUCATIVO), n, p = Porcentaje, acum = Acumulado)
+
+cuenta_valores <- function(v, nombre) datos %>% count(valor = .data[[v]]) %>% mutate(variable = nombre)
+d_cuant <- bind_rows(cuenta_valores("EDAD", "Edad (años)"),
+                     cuenta_valores("AÑOS_EDUC", "Años de educación (código 1–16)"),
+                     cuenta_valores("HORAS", "Horas trabajadas por semana"))
+caja <- function(v, nombre) {
+  x <- datos[[v]]; a <- atipicos(x)
+  data.frame(variable = nombre, media = mean(x), mediana = median(x),
+             q1 = quantile(x, .25, names = FALSE), q3 = quantile(x, .75, names = FALSE),
+             lo = min(x[x >= a["li"]]), hi = max(x[x <= a["ls"]]), n_at = unname(a["n"]))
+}
+d_caja <- bind_rows(caja("EDAD", "Edad (años)"),
+                    caja("AÑOS_EDUC", "Años de educación (código 1–16)"),
+                    caja("HORAS", "Horas trabajadas por semana"))
+
+comp_ingreso <- function(df, etiqueta) df %>% count(NIVEL_EDUCATIVO, INGRESO) %>%
+  group_by(NIVEL_EDUCATIVO) %>% mutate(p = n / sum(n)) %>% ungroup() %>%
+  transmute(poblacion = etiqueta, nivel = as.character(NIVEL_EDUCATIVO),
+            ingreso = as.character(INGRESO), n, p)
+d_ing_nivel <- bind_rows(comp_ingreso(datos, "Todos"),
+                         comp_ingreso(filter(datos, SEXO == "Mujer"), "Mujer"),
+                         comp_ingreso(filter(datos, SEXO == "Hombre"), "Hombre"))
+d_prom <- data.frame(poblacion = c("Todos", "Mujer", "Hombre"),
+                     p = c(p_A, prop_sexo$Proporcion[prop_sexo$SEXO == "Mujer"],
+                           prop_sexo$Proporcion[prop_sexo$SEXO == "Hombre"]))
+
+ancho <- as.numeric(p_B)
+d_mosaico <- as.data.frame(tab_cont) %>%
+  transmute(nivel = as.character(Var1), ingreso = as.character(Var2), n = Freq) %>%
+  group_by(nivel) %>% mutate(p = n / sum(n)) %>% ungroup() %>%
+  mutate(orden = match(nivel, niveles_edu),
+         x1 = c(0, cumsum(ancho))[orden], x2 = cumsum(ancho)[orden]) %>%
+  group_by(nivel) %>% arrange(desc(ingreso), .by_group = TRUE) %>%
+  mutate(y1 = c(0, cumsum(p))[seq_along(p)], y2 = cumsum(p)) %>% ungroup()
+
+d_sexo_nivel <- prop_sexo_nivel %>%
+  transmute(nivel = as.character(NIVEL_EDUCATIVO), sexo = as.character(SEXO), n = Personas, p = Proporcion)
+
+d_horas <- bind_rows(
+  horas_ingreso %>% transmute(agrupacion = "Ingreso anual", grupo = as.character(INGRESO),
+                              n, media = Media, mediana = Mediana, ic_inf = IC_inf, ic_sup = IC_sup, mas40 = Mas_40),
+  horas_nivel %>% transmute(agrupacion = "Nivel educativo", grupo = as.character(NIVEL_EDUCATIVO),
+                            n, media = Media, mediana = Mediana, ic_inf = IC_inf, ic_sup = IC_sup, mas40 = Mas_40))
+
+etq_cor <- c(EDAD = "Edad", AÑOS_EDUC = "Años de educación", HORAS = "Horas", INGRESO_ALTO = "Ingreso >50K (0/1)")
+d_cor <- as.data.frame(as.table(mat_cor)) %>%
+  transmute(x = etq_cor[as.character(Var1)], y = etq_cor[as.character(Var2)], r = Freq)
+
+d_cond <- data.frame(nivel = names(p_cond), p = as.numeric(p_cond), pb = as.numeric(p_B),
+                     conj = as.numeric(conj[, ">50K"]))
+d_bayes <- bind_rows(
+  data.frame(nivel = names(p_B), tipo = "A priori: P(nivel)", p = as.numeric(p_B)),
+  data.frame(nivel = names(bayes), tipo = "A posteriori: P(nivel | >50K)", p = as.numeric(bayes)))
+
+ojs_define(d_cual = d_cual, d_edu = d_edu, d_cuant = d_cuant, d_caja = d_caja,
+           d_ing_nivel = d_ing_nivel, d_prom = d_prom, d_mosaico = d_mosaico,
+           d_sexo_nivel = d_sexo_nivel, d_horas = d_horas, d_cor = d_cor,
+           d_cond = d_cond, d_bayes = d_bayes, p_A = p_A, niveles = niveles_edu)
+
+# Barras de la portada (proporción con >50K por nivel)
+pal_heroe <- c("#EFE5D6", "#E0C9A6", "#CFA273", "#B7744C", "#93503A", "#5F3027")
+etq_heroe <- c("Primaria o menos", "Secundaria incompl.", "Bachillerato", "Técnico / Univ. inc.", "Pregrado", "Posgrado")
+heroe_html <- paste0(
+  '<div class="barras">',
+  paste0('<div class="barra"><b>', pct(prop_nivel$Proporcion), '</b><i style="height:',
+         round(prop_nivel$Proporcion / 0.7 * 100), '%;background:', pal_heroe, '"></i></div>', collapse = ""),
+  '</div><div class="etqs">', paste0('<span>', etq_heroe, '</span>', collapse = ""), '</div>')
+```
+
+## {.portada-slide data-menu-title="Portada"}
+
+::: {.portada}
+::: {}
+[Pontificia Universidad Javeriana Cali · Teoría de Probabilidad]{.institucion}
+
+::: {.titulo-portada}
+Educación *e* ingreso
+:::
+
+::: {.pregunta}
+¿El nivel educativo aumenta la probabilidad de ganar más de USD 50.000 al año? Un análisis descriptivo y probabilístico del censo de Estados Unidos de 1994.
+:::
+
+::: {.autora}
+**Laura Sofia Valencia**
+[Proyecto final · Noviembre de 2026]{}
+:::
+:::
+
+::: {.heroe}
+[Proporción con ingreso >50K por nivel educativo]{.heroe-titulo}
+
+```{r}
+#| label: heroe
+#| results: asis
+cat(heroe_html)
+```
+
+[Base *Adult* (UCI) · n = `r num(nrow(datos))` personas]{.heroe-nota}
+:::
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+Plot = import("https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.16/+esm")
+fmtP = (x, d = 1) => (x * 100).toLocaleString("es-CO", {minimumFractionDigits: d, maximumFractionDigits: d}) + "%"
+fmtN = (x, d = 0) => x.toLocaleString("es-CO", {minimumFractionDigits: d, maximumFractionDigits: d})
+paleta = ({bajo: "#D9C9B2", alto: "#B5543A", tinta: "#2A2421", suave: "#6B6058", pino: "#2F5A54", ocre: "#C9922E",
+           arena: "#EDE3D4", mujer: "#7A4E70", hombre: "#2F5A54",
+           edu: ["#EFE5D6", "#E0C9A6", "#CFA273", "#B7744C", "#93503A", "#5F3027"]})
+estilo = ({fontFamily: "Manrope, sans-serif", fontSize: "16px", color: "#2A2421", background: "transparent", overflow: "visible"})
+leyenda = (items) => html`<div class="leyenda-grafico">${items.map(([t, c]) => html`<span class="item"><i style="background:${c}"></i>${t}</span>`)}</div>`
+corto = new Map([["Primaria o menos", "Primaria o menos"], ["Secundaria incompleta", "Secundaria incompl."], ["Bachillerato", "Bachillerato"], ["Técnico / Univ. incompleta", "Técnico / Univ. inc."], ["Pregrado universitario", "Pregrado"], ["Posgrado", "Posgrado"]])
+corto2 = new Map([["Primaria o menos", "Primaria\no menos"], ["Secundaria incompleta", "Secundaria\nincompleta"], ["Bachillerato", "Bachillerato"], ["Técnico / Univ. incompleta", "Técnico /\nUniv. incompleta"], ["Pregrado universitario", "Pregrado\nuniversitario"], ["Posgrado", "Posgrado"]])
+mosaicoEtq = new Map([["Primaria o menos", "Prim."], ["Secundaria incompleta", "Sec."], ["Bachillerato", "Bachillerato"], ["Técnico / Univ. incompleta", "Técnico / Univ. inc."], ["Pregrado universitario", "Pregrado"], ["Posgrado", "Posgrado"]])
+```
+
+::: notes
+Proyecto final del curso Teoría de Probabilidad. El gráfico de la portada anticipa el resultado central: la proporción de personas con ingreso alto crece en cada nivel educativo.
+:::
+
+## Seis requisitos, una pregunta {.ruta-slide data-menu-title="Ruta de la exposición"}
+
+```{=html}
+<div class="linea-ruta">
+<a href="#/sec-pregunta"><span class="n">1</span><span class="t">Pregunta de interés</span><span class="d">Variables e hipótesis</span></a>
+<a href="#/sec-contexto"><span class="n">2</span><span class="t">Contextualización</span><span class="d">Base, umbral y época</span></a>
+<a href="#/sec-variables"><span class="n">3</span><span class="t">Tipo y escala de las variables</span><span class="d">15 variables, categorías y valores</span></a>
+<a href="#/sec-limpieza"><span class="n">4</span><span class="t">Limpieza y depuración</span><span class="d">Faltantes, duplicados y recodificación</span></a>
+<a href="#/sec-analisis"><span class="n">5</span><span class="t">Análisis estadístico</span><span class="d">Univariado, bivariado y probabilístico</span></a>
+<a href="#/sec-resultados"><span class="n">6</span><span class="t">Presentación de resultados</span><span class="d">Respuesta, hallazgos y limitaciones</span></a>
+</div>
+```
+
+::: {.nota-base}
+::: {}
+**Condición de la base.** 15 variables (mínimo exigido: 10): **9 cualitativas** y **6 cuantitativas**.
+:::
+::: {}
+**Requisito 6.** Esta presentación web reúne y comunica los resultados de los requisitos 1 a 5.
+:::
+:::
+
+::: notes
+Cada número lleva a su sección. Tecla F: pantalla completa. Tecla M: índice. Tecla S: notas del orador.
+:::
+
+## [[01]{.num}Pregunta de interés]{.etiqueta} ¿Estudiar más aumenta la probabilidad de un ingreso alto? {#sec-pregunta .pregunta-slide data-menu-title="1 · Pregunta de interés"}
+
+::: {.pregunta-central}
+¿El nivel educativo aumenta la probabilidad de ganar **más de USD 50.000** al año?
+:::
+
+::: {.roles}
+::: {.rol}
+[Variable independiente]{.titulo-caja}
+[Nivel educativo]{.valor}
+6 niveles, de primaria a posgrado
+:::
+::: {.rol}
+[Variable dependiente]{.titulo-caja}
+[Ingreso anual]{.valor}
+`>50K` (alto) o `<=50K`
+:::
+::: {.rol}
+[Variables de apoyo]{.titulo-caja}
+[Horas · edad · sexo]{.valor}
+y años de educación (numérica)
+:::
+:::
+
+:::: {.columns}
+::: {.column width="55%"}
+::: {.hipotesis}
+**Hipótesis de trabajo.** A mayor nivel educativo, mayor proporción de personas con ingreso superior a USD 50.000.
+:::
+:::
+::: {.column width="45%"}
+::: {.texto-sm}
+**Unidad de análisis:** persona adulta trabajadora registrada en el censo.<br>
+**Enfoque:** describir y comparar (estadística descriptiva) y cuantificar *chances* (probabilidad), sin afirmar causalidad.
+:::
+:::
+::::
+
+::: notes
+Motivación: la idea de que «estudiar más permite ganar más» sostiene decisiones personales (cursar un posgrado, financiar la universidad) y políticas públicas (becas, ampliación de la educación superior). El objetivo es contrastar esa creencia con datos. Preguntas guía: ¿qué proporción gana más de 50.000 dólares? ¿Cambia entre niveles educativos? ¿Influyen las horas trabajadas o el sexo? Si alguien gana más de 50.000, ¿qué tan probable es que tenga posgrado?
+:::
+
+## [[02]{.num}Contextualización]{.etiqueta} Un censo de 1994 que todavía plantea una pregunta vigente {#sec-contexto .contexto-slide data-menu-title="2 · Contextualización"}
+
+::: {.tarjetas}
+::: {.tarjeta}
+[Fuente]{.titulo-caja}
+Base *Adult* (*Census Income*), repositorio **UCI**. Extraída por Barry Becker de la **Encuesta de Población Actual (CPS) 1994**; donada por Kohavi y Becker (1996).
+
+Incluye personas con **más de 16 años**, ingreso **> USD 100**, peso muestral positivo y **≥ 1 hora** de trabajo semanal.
+:::
+::: {.tarjeta}
+[El umbral]{.titulo-caja}
+El ingreso se publica en dos grupos: **hasta** y **más de USD 50.000** anuales.
+
+En 1994 el ingreso medio de un *hogar* en EE. UU. rondaba los **USD 32.000**: superar USD 50.000 *individuales* era un ingreso **claramente alto**.
+:::
+::: {.tarjeta}
+[La época]{.titulo-caja}
+Expansión de la educación superior y brecha salarial creciente por título universitario.
+
+*HS-grad* = bachillerato · *Some-college / Assoc* = universidad incompleta o técnico · *Bachelors* = pregrado · *Masters, Prof-school, Doctorate* = posgrado.
+:::
+:::
+
+::: {.kpis style="margin-top:26px"}
+::: {.kpi}
+[`r num(nrow(datos_crudos))`]{.valor}
+[registros]{.rotulo}
+:::
+::: {.kpi}
+[15]{.valor}
+[variables]{.rotulo}
+:::
+::: {.kpi}
+[3]{.valor .acento}
+[advertencias de alcance: ingreso en dos categorías · EE. UU. 1994 · estudio observacional]{.rotulo}
+:::
+:::
+
+::: notes
+Advertencias desde el inicio: primero, el ingreso solo tiene dos categorías, por lo que no se pueden calcular salarios promedio ni correlaciones con el ingreso exacto; segundo, los resultados describen a Estados Unidos en 1994 y no se trasladan directamente a otro país o época; tercero, es un estudio observacional y una asociación no prueba que la educación cause el ingreso. La pregunta conserva vigencia: muchos países, incluidos los latinoamericanos, discuten hoy el valor de un título universitario.
+:::
+
+## [[03]{.num}Tipo y escala de las variables]{.etiqueta} Dos archivos, una base: 48.842 personas y 15 variables {#sec-variables data-menu-title="3 · Carga y escalas"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Lectura y unión de los archivos de la base.
+:::
+::: {}
+**Por qué**
+El tipo y la escala de cada variable definen qué indicador y qué gráfico son válidos.
+:::
+::: {}
+**Cómo**
+Lectura sin encabezado, nombres de `adult.names`, unión de filas.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="54%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-carga
+#| ref-label: carga
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`read_csv()` lee cada archivo; `bind_rows()` los une.
+
+[Decisión]{.g}
+Se unen entrenamiento y prueba: el estudio es descriptivo y no necesita una muestra de validación.
+
+[Detalle]{.g}
+`skip = 1` omite la línea de comentario inicial de `adult.test`.
+:::
+:::
+
+::: {.column width="46%"}
+```{r}
+#| label: t-dimensiones
+tabla(data.frame(Archivo = c("adult.data", "adult.test", "Base unida"),
+                 Registros = num(c(nrow(entrenamiento), nrow(prueba), nrow(datos_crudos))),
+                 Variables = ncol(datos_crudos))) %>%
+  row_spec(3, bold = TRUE, background = resalte) %>% kable_styling(font_size = 24)
+```
+
+::: {.escalas}
+::: {}
+**Nominal**
+Categorías sin orden: ocupación, raza, sexo.
+:::
+::: {}
+**Ordinal**
+Categorías con orden: nivel educativo; ≤50K < >50K.
+:::
+::: {}
+**Intervalo**
+Números ordenados sin cero absoluto: código de educación 1–16.
+:::
+::: {}
+**Razón**
+Cero real; tiene sentido «el doble»: edad, horas, dólares.
+:::
+:::
+:::
+::::
+
+::: notes
+La base original tiene 48.842 personas y 15 variables: 6 numéricas y 9 categóricas. La separación entre entrenamiento y prueba solo tiene sentido para modelos predictivos; aquí se unen para describir la muestra completa. Las cuatro escalas se aplican a cada variable en la diapositiva siguiente.
+:::
+
+## [[03]{.num}Tipo y escala de las variables]{.etiqueta} Diccionario: tipo, escala y valores de las 15 variables {data-menu-title="3 · Diccionario de variables"}
+
+```{r}
+#| label: t-diccionario
+valores <- function(v) {
+  x <- datos_crudos[[v]]
+  if (is.numeric(x)) return(paste0(num(min(x)), " a ", num(max(x)), " (", num(length(unique(x))), " valores)"))
+  cats <- sort(unique(x[x != "?"]))
+  txt <- if (length(cats) > 4) paste0(paste(head(cats, 3), collapse = ", "), ", … (", length(cats), " categorías)")
+         else paste0(paste(cats, collapse = ", "), " (", length(cats), ")")
+  if (any(x == "?")) txt <- paste0(txt, " · contiene «?»")
+  txt
+}
+uso <- c(age = "Apoyo (EDAD)", education = "Independiente (NIVEL_EDUCATIVO)",
+         education_num = "Independiente numérica (AÑOS_EDUC)", sex = "Control (SEXO)",
+         hours_per_week = "Apoyo (HORAS)", income = "Dependiente (INGRESO)")
+dicc <- data.frame(
+  Variable = columnas,
+  Significado = c("Edad", "Clase de trabajador", "Peso muestral", "Nivel educativo",
+                  "Código del nivel educativo", "Estado civil", "Ocupación", "Rol en el hogar",
+                  "Raza", "Sexo", "Ganancias de capital (USD)", "Pérdidas de capital (USD)",
+                  "Horas por semana", "País de origen", "Ingreso anual"),
+  Tipo = c("Cuantitativa discreta", "Cualitativa", "Cuantitativa continua", "Cualitativa",
+           "Cuantitativa discreta", "Cualitativa", "Cualitativa", "Cualitativa", "Cualitativa",
+           "Cualitativa", "Cuantitativa continua", "Cuantitativa continua",
+           "Cuantitativa discreta", "Cualitativa", "Cualitativa"),
+  Escala = c("Razón", "Nominal", "Razón", "Ordinal", "Intervalo", "Nominal", "Nominal",
+             "Nominal", "Nominal", "Nominal (dicotómica)", "Razón", "Razón", "Razón",
+             "Nominal", "Ordinal (dicotómica)"),
+  `Categorías o valores` = sapply(columnas, valores),
+  `Uso en el estudio` = ifelse(columnas %in% names(uso), uso[columnas], "—"),
+  check.names = FALSE, row.names = NULL)
+tabla(dicc, align = c("l", "l", "l", "l", "l", "l")) %>%
+  column_spec(1, bold = TRUE, monospace = TRUE) %>%
+  column_spec(5, width = "24em") %>%
+  row_spec(which(columnas %in% names(uso)), background = resalte) %>%
+  kable_styling(font_size = 16)
+```
+
+::: {.texto-xs}
+**Resaltadas:** las seis variables del estudio. Las demás quedan fuera del alcance de la pregunta; `fnlwgt` sirve para estimar totales poblacionales y aquí se usa la muestra sin ponderar, como es habitual con esta base.
+:::
+
+::: notes
+La tabla cumple el requisito 3. El ingreso se clasifica como ordinal dicotómica porque sus dos categorías tienen un orden natural. Tres variables contienen el código «?», que se trata en la limpieza.
+:::
+
+## [[04]{.num}Limpieza y depuración]{.etiqueta} Los faltantes no son NA: están escondidos como «?» {#sec-limpieza data-menu-title="4 · Faltantes y duplicados"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Datos desconocidos y registros repetidos.
+:::
+::: {}
+**Por qué**
+Un faltante o un duplicado distorsiona frecuencias y probabilidades.
+:::
+::: {}
+**Cómo**
+Conteo de `NA` y de `"?"` por variable; filas afectadas.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="44%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-faltantes
+#| ref-label: faltantes
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`is.na()` y la comparación `x == "?"`, sumadas por columna con `colSums()` y `sapply()`.
+
+[Resultado]{.g}
+Tabla de faltantes por variable y número de filas con al menos un `"?"` (`apply(..., any)`).
+:::
+:::
+
+::: {.column width="23%"}
+```{r}
+#| label: t-faltantes
+faltantes %>% tabla() %>%
+  row_spec(which(faltantes$`Signo ?` > 0), bold = TRUE, background = resalte) %>%
+  kable_styling(font_size = 17)
+```
+:::
+
+::: {.column width="33%"}
+::: {.kpis style="flex-direction:column"}
+::: {.kpi}
+[`r num(filas_con_faltantes)`]{.valor .acento}
+[filas con «?» · `r pct(filas_con_faltantes / nrow(datos_crudos))` de la base]{.rotulo}
+:::
+::: {.kpi}
+[`r num(n_duplicados)`]{.valor .acento}
+[duplicados exactos (tras retirar «?»)]{.rotulo}
+:::
+:::
+
+::: {.claves}
+- **0** valores `NA`, pero **3 variables** con `"?"`: ocupación (`r num(sum(datos_crudos$occupation == "?"))`), clase de trabajador (`r num(sum(datos_crudos$workclass == "?"))`) y país (`r num(sum(datos_crudos$native_country == "?"))`).
+- Ninguna **variable de estudio** tiene faltantes.
+:::
+:::
+::::
+
+::: notes
+En total, 3.620 filas (7,4 %) tienen al menos un dato desconocido. Como ninguna variable de estudio tiene faltantes, eliminar esas filas no afecta la medición de educación ni de ingreso y deja una base completa y comparable con otros estudios. Los 47 duplicados se identifican después de retirar las filas con signo de interrogación.
+:::
+
+## [[04]{.num}Limpieza y depuración]{.etiqueta} Cinco decisiones de depuración y su justificación {.decisiones-slide data-menu-title="4 · Decisiones de depuración"}
+
+```{r}
+#| label: flujo
+#| results: asis
+cat(paste0('<div class="flujo">',
+  '<div class="paso"><span class="num">01</span><span class="cifra-paso">', num(nrow(datos_crudos)), '</span><span class="txt"><strong>Unir y unificar.</strong> Se quitan los puntos finales de las etiquetas del ingreso en <code>adult.test</code>.</span></div>',
+  '<div class="paso"><span class="num">02</span><span class="cifra-paso resta">− ', num(nrow(datos_crudos) - nrow(sin_faltantes)), '</span><span class="txt"><strong>Eliminar filas con «?».</strong> Quedan ', num(nrow(sin_faltantes)), '.</span></div>',
+  '<div class="paso"><span class="num">03</span><span class="cifra-paso resta">− ', num(n_duplicados), '</span><span class="txt"><strong>Eliminar duplicados exactos.</strong> Quedan ', num(nrow(sin_duplicados)), '.</span></div>',
+  '<div class="paso"><span class="num">04</span><span class="cifra-paso">16 → 6</span><span class="txt"><strong>Agrupar la educación</strong> en seis niveles ordenados.</span></div>',
+  '<div class="paso"><span class="num">05</span><span class="cifra-paso" style="color:#2F5A54">', num(nrow(datos)), '</span><span class="txt"><strong>Variables de estudio</strong> renombradas y codificadas · ', pct(nrow(datos) / nrow(datos_crudos)), ' de la base.</span></div>',
+  '</div>'))
+```
+
+::: {.decisiones}
+::: {.decision}
+[¿Por qué eliminar las filas con «?»?]{.titulo-caja}
+Representan el **`r pct(filas_con_faltantes / nrow(datos_crudos))`** de la base y **no afectan** a las variables de estudio. Eliminarlas deja una base completa, sin imputaciones, y comparable con los estudios que usan esta misma base (45.222 registros sin desconocidos, según `adult.names`).
+:::
+::: {.decision}
+[¿Por qué agrupar en seis niveles?]{.titulo-caja}
+Los 16 niveles originales incluyen grupos muy pequeños (solo **`r sum(datos$EDUCACION_ORIG == "Preschool")`** personas en preescolar). La agrupación sigue el orden de `education_num`, así que **respeta la jerarquía** de los estudios y permite comparar probabilidades estables.
+:::
+::: {.decision}
+[¿Por qué conservar los atípicos?]{.titulo-caja}
+Los valores extremos de **edad** y **horas** son datos reales —personas mayores que siguen trabajando, jornadas parciales o muy largas—, **no errores de registro**. Eliminarlos cambiaría la población descrita.
+:::
+:::
+
+::: notes
+Orden de los pasos: 1) unificar etiquetas del ingreso; 2) eliminar filas con signo de interrogación; 3) eliminar duplicados exactos; 4) agrupar los 16 niveles educativos en 6; 5) renombrar y convertir las variables a factores ordenados con etiquetas en español. La base depurada conserva 45.175 personas, el 92,5 % de la original, sin cambiar su composición general.
+:::
+
+## [[04]{.num}Limpieza y depuración]{.etiqueta} La depuración en R, paso a paso {data-menu-title="4 · Depuración en R"}
+
+:::: {.columns}
+::: {.column width="52%"}
+::: {.panel-tabset}
+### Pasos 1 a 3 · filas
+
+```{r}
+#| label: ver-depuracion-filas
+#| ref-label: depuracion-filas
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Paso 1]{.g}
+`sub("\\.$", "", income)` elimina el punto final de `<=50K.` y `>50K.`
+
+[Paso 2]{.g}
+`filter(if_all(everything(), ~ .x != "?"))` conserva solo filas sin `"?"` en ninguna columna.
+
+[Paso 3]{.g}
+`duplicated()` cuenta los repetidos; `distinct()` los elimina.
+:::
+
+### Pasos 4 y 5 · variables
+
+```{r}
+#| label: ver-depuracion-variables
+#| ref-label: depuracion-variables
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Paso 4]{.g}
+`cut()` corta `education_num` en los puntos 4, 8, 9, 12 y 13 → seis niveles ordenados.
+
+[Paso 5]{.g}
+`transmute()` crea las variables de estudio; `INGRESO_ALTO` (1 = >50K) permite calcular proporciones como medias.
+:::
+:::
+:::
+
+::: {.column width="48%"}
+```{r}
+#| label: t-recodificacion
+datos %>% group_by(NIVEL_EDUCATIVO) %>%
+  summarise(`Categorías originales` = paste(unique(EDUCACION_ORIG[order(AÑOS_EDUC)]), collapse = ", "),
+            Códigos = paste0(min(AÑOS_EDUC), "–", max(AÑOS_EDUC)), Personas = num(n())) %>%
+  rename(`Nivel agrupado` = NIVEL_EDUCATIVO) %>%
+  tabla("Recodificación del nivel educativo", align = c("l", "l", "c", "r")) %>%
+  kable_styling(font_size = 19)
+```
+
+::: {.claves .pino}
+**Resultado:** base depurada de **`r num(nrow(datos))` personas** con seis variables de estudio, sin faltantes ni duplicados y con la educación en una escala ordinal de seis niveles.
+:::
+:::
+::::
+
+::: notes
+Cada pestaña muestra el fragmento exacto de R/analisis.R que se ejecutó. La variable INGRESO_ALTO vale 1 cuando el ingreso supera 50.000 dólares; su media es directamente la proporción de personas con ingreso alto.
+:::
+
+## [[05]{.num}Análisis estadístico]{.etiqueta} Del dato a la probabilidad: tres niveles de análisis {#sec-analisis data-menu-title="5 · Objetivo y estrategia"}
+
+::: {.pregunta-central style="font-size:0.95em; margin-bottom:22px"}
+**Objetivo general:** determinar si la probabilidad de tener un ingreso anual superior a USD 50.000 aumenta con el nivel educativo.
+:::
+
+```{r}
+#| label: t-estrategia
+tabla(data.frame(
+  Nivel = c("OE1 · Univariado", "OE1 · Univariado", "OE2 · Bivariado", "OE2 · Bivariado", "OE2 · Bivariado", "OE3 · Probabilístico"),
+  `Variables` = c("Cualitativas", "Cuantitativas", "Cualitativa × cualitativa",
+                  "Cualitativa × cuantitativa", "Cuantitativa × cuantitativa", "Eventos A y Bᵢ"),
+  `Indicadores` = c("Frecuencias absolutas y relativas, moda",
+                    "Media, mediana, cuartiles, DE, CV, asimetría, atípicos",
+                    "Contingencia; proporción con >50K por nivel",
+                    "Media, mediana e IC 95 % de las horas por grupo",
+                    "Correlación de Pearson / punto-biserial",
+                    "Marginal, conjunta, condicional, Bayes, independencia (χ²)"),
+  `Gráficos` = c("Barras", "Histograma y diagrama de caja", "Barras al 100 % y mosaico",
+                 "Medias con intervalo de confianza", "Matriz de correlaciones",
+                 "Probabilidades comparadas"),
+  check.names = FALSE), align = c("l", "l", "l", "l")) %>%
+  collapse_rows(columns = 1, valign = "middle") %>% kable_styling(font_size = 21)
+```
+
+::: {.texto-xs}
+**Criterios del objetivo:** específico (variables concretas) · medible (proporciones y probabilidades) · relevante (valor de la educación) · acotado (ingreso dicotómico; EE. UU., 1994). Los gráficos siguientes son interactivos: el cursor muestra las cifras exactas.
+:::
+
+::: notes
+La estrategia sigue la estructura del proyecto de referencia del curso: primero cada variable por separado, luego las relaciones entre pares de variables y finalmente el análisis probabilístico, que responde directamente la pregunta. El tipo de variable determina el indicador y el gráfico apropiados.
+:::
+
+## [[05]{.num}Univariado · cualitativas]{.etiqueta} Solo 1 de cada 4 personas gana más de USD 50.000 {data-menu-title="5 · Ingreso y sexo"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Distribución del ingreso (dependiente) y del sexo (control).
+:::
+::: {}
+**Por qué**
+$P(>50K)$ es la referencia para juzgar cada nivel educativo.
+:::
+::: {}
+**Cómo**
+Frecuencias absolutas, relativas y acumuladas; moda.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-uni-cualitativas
+#| ref-label: uni-cualitativas
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`frecuencias()` = `count()` + porcentaje + `cumsum()`; una sola función para las tres variables cualitativas.
+
+[Resultado]{.g}
+`tab_ingreso`, `tab_sexo` y `tab_edu`.
+:::
+:::
+
+::: {.column width="60%"}
+```{ojs}
+//| echo: false
+Plot.plot({
+  width: 880, height: 250, marginLeft: 130, marginRight: 40, marginBottom: 50, style: estilo,
+  x: {label: "Porcentaje de personas", labelAnchor: "center", labelOffset: 42, tickFormat: d => fmtP(d, 0), domain: [0, 1]},
+  y: {label: null, domain: ["Ingreso anual", "Sexo"]},
+  color: {domain: ["<=50K", ">50K", "Mujer", "Hombre"], range: [paleta.bajo, paleta.alto, paleta.mujer, paleta.hombre]},
+  marks: [
+    Plot.barX(transpose(d_cual), Plot.stackX({x: "p", y: "variable", fill: "categoria", inset: 2,
+      title: d => `${d.variable}: ${d.categoria}\n${fmtN(d.n)} personas (${fmtP(d.p)})`, tip: true})),
+    Plot.textX(transpose(d_cual), Plot.stackX({x: "p", y: "variable", z: "categoria",
+      text: d => `${d.categoria}   ${fmtP(d.p)}`, fill: d => d.categoria === "<=50K" ? paleta.tinta : "white", fontWeight: 700, fontSize: 17}))
+  ]
+})
+```
+
+::: {.kpis}
+::: {.kpi}
+[`r pct(p_A)`]{.valor .acento}
+[P(>50K) = `r num(p_A, 3)` · `r num(sum(datos$INGRESO_ALTO))` personas]{.rotulo}
+:::
+::: {.kpi}
+[`r pct(tab_sexo$Porcentaje[2])`]{.valor .pino}
+[hombres en la muestra (moda)]{.rotulo}
+:::
+:::
+
+::: {.claves}
+- El ingreso alto es **minoritario**: aproximadamente **1 de cada 4** personas. Esta proporción es el **punto de referencia** del análisis.
+- La muestra **no está balanceada por sexo**: reflejo de la menor participación laboral femenina en 1994; el sexo se usa como **control**.
+:::
+:::
+::::
+
+::: notes
+Moda del ingreso: hasta 50K, con 75,2 %. Moda del sexo: hombre, 67,5 %, frente a 32,5 % de mujeres. La probabilidad general de ingreso alto, 0,248, se compara después con la probabilidad dentro de cada nivel educativo.
+:::
+
+## [[05]{.num}Univariado · cualitativa ordinal]{.etiqueta} El bachillerato domina; solo `r pct(tab_edu$Porcentaje[6])` tiene posgrado {data-menu-title="5 · Nivel educativo"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Distribución de los seis niveles educativos.
+:::
+::: {}
+**Por qué**
+Es la variable independiente; el tamaño de cada grupo condiciona la comparación.
+:::
+::: {}
+**Cómo**
+Frecuencias con porcentaje acumulado (escala ordinal); moda.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+```{r}
+#| label: t-edu
+tab_edu %>% transmute(`Nivel educativo` = NIVEL_EDUCATIVO, Personas = num(n),
+                      `%` = pct(Porcentaje), `% acumulado` = pct(Acumulado)) %>%
+  tabla(align = c("l", "r", "r", "r")) %>% row_spec(3, bold = TRUE, background = resalte) %>%
+  kable_styling(font_size = 21)
+```
+
+::: {.guia}
+[Función]{.g}
+`frecuencias(NIVEL_EDUCATIVO)`, la misma de la diapositiva anterior.
+
+[Detalle]{.g}
+El porcentaje acumulado solo tiene sentido porque la escala es **ordinal**.
+:::
+:::
+
+::: {.column width="60%"}
+```{ojs}
+//| echo: false
+Plot.plot({
+  width: 880, height: 380, marginLeft: 175, marginRight: 80, style: estilo,
+  x: {label: "Personas", grid: true, tickFormat: d => fmtN(d)},
+  y: {label: null, domain: niveles, tickFormat: d => corto.get(d)},
+  color: {domain: niveles, range: paleta.edu},
+  marks: [
+    Plot.barX(transpose(d_edu), {x: "n", y: "nivel", fill: "nivel", rx: 4,
+      title: d => `${d.nivel}\n${fmtN(d.n)} personas · ${fmtP(d.p)}\nAcumulado: ${fmtP(d.acum)}`, tip: true}),
+    Plot.text(transpose(d_edu), {x: "n", y: "nivel", text: d => fmtP(d.p), dx: 10, textAnchor: "start", fontWeight: 700}),
+    Plot.ruleX([0], {stroke: paleta.tinta})
+  ]
+})
+```
+
+::: {.claves}
+- **Moda:** bachillerato (`r pct(tab_edu$Porcentaje[3])`). Con técnico o universidad incompleta suman **`r pct(tab_edu$Porcentaje[3] + tab_edu$Porcentaje[4])`**.
+- El **`r pct(tab_edu$Acumulado[4])`** no tiene título universitario completo → se comparan **proporciones**, no conteos.
+:::
+:::
+::::
+
+::: notes
+Los extremos son minoritarios: 3,5 % con primaria o menos y 8,5 % con posgrado. La diferencia de tamaños explica por qué en la sección probabilística se usa la probabilidad condicional y no la conjunta para comparar niveles.
+:::
+
+## [[05]{.num}Univariado · cuantitativas]{.etiqueta} Edad asimétrica, educación concentrada y horas en torno a 40 {data-menu-title="5 · Variables cuantitativas"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Centro, dispersión, forma y atípicos de edad, años de educación y horas.
+:::
+::: {}
+**Por qué**
+Describen la población y anticipan comparaciones y correlaciones.
+:::
+::: {}
+**Cómo**
+Medidas de tendencia central y dispersión; atípicos por el criterio de Tukey (1,5 · RIC).
+:::
+:::
+
+:::: {.columns}
+::: {.column width="41%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-uni-cuantitativas
+#| ref-label: [funciones, uni-cuantitativas]
+#| echo: true
+#| eval: false
+```
+:::
+
+::: {.column width="59%"}
+```{ojs}
+//| echo: false
+viewof varCuant = Inputs.radio(transpose(d_caja).map(d => d.variable), {value: "Edad (años)"})
+```
+
+```{ojs}
+//| echo: false
+{
+  const valores = transpose(d_cuant).filter(d => d.variable === varCuant);
+  const c = transpose(d_caja).find(d => d.variable === varCuant);
+  const total = d3.sum(valores, d => d.n);
+  const dom = d3.extent(valores, d => d.valor);
+  const xs = {label: null, domain: [dom[0] - 0.5, dom[1] + 0.5]};
+  const hist = Plot.plot({
+    width: 880, height: 185, marginLeft: 70, style: estilo, x: xs,
+    y: {label: "Personas", grid: true, tickFormat: d => fmtN(d)},
+    marks: [
+      Plot.rectY(valores, {x1: d => d.valor - 0.45, x2: d => d.valor + 0.45, y: "n", fill: paleta.pino, fillOpacity: 0.85,
+        title: d => `Valor: ${d.valor}\n${fmtN(d.n)} personas (${fmtP(d.n / total)})`, tip: true}),
+      Plot.ruleX([c.media], {stroke: paleta.alto, strokeWidth: 2.5}),
+      Plot.ruleX([c.mediana], {stroke: paleta.ocre, strokeWidth: 2.5, strokeDasharray: "6,4"}),
+      Plot.ruleY([0], {stroke: paleta.tinta})
+    ]
+  });
+  const caja = Plot.plot({
+    width: 880, height: 85, marginLeft: 70, style: estilo,
+    x: {...xs, label: null}, y: {axis: null, domain: [0, 1]},
+    marks: [
+      Plot.ruleY([0.5], {x1: c.lo, x2: c.hi, stroke: paleta.suave, strokeWidth: 2}),
+      Plot.rect([c], {x1: "q1", x2: "q3", y1: 0.2, y2: 0.8, fill: paleta.arena, stroke: paleta.tinta, strokeWidth: 1.2, rx: 4,
+        title: d => `Q1 = ${fmtN(d.q1, 1)} · Mediana = ${fmtN(d.mediana, 1)} · Q3 = ${fmtN(d.q3, 1)}\nBigotes: ${fmtN(d.lo)} a ${fmtN(d.hi)}\nAtípicos (Tukey): ${fmtN(d.n_at)}`, tip: true}),
+      Plot.ruleX([c.mediana], {y1: 0.2, y2: 0.8, stroke: paleta.ocre, strokeWidth: 3}),
+      Plot.dot([c], {x: "media", y: 0.5, fill: paleta.alto, r: 6, symbol: "diamond"})
+    ]
+  });
+  return html`<div>${hist}${caja}<div class="leyenda-grafico"><span class="item"><i style="background:${paleta.alto}"></i>Media ${fmtN(c.media, 1)}</span><span class="item"><i style="background:${paleta.ocre}"></i>Mediana ${fmtN(c.mediana, 1)}</span><span class="item"><i style="background:${paleta.arena}; border:1px solid ${paleta.tinta}"></i>Caja Q1–Q3 · atípicos: ${fmtN(c.n_at)}</span></div></div>`;
+}
+```
+:::
+::::
+
+```{r}
+#| label: t-cuantitativas
+r <- t(resumen_cuant)
+tab <- data.frame(
+  Variable = c("Edad", "Años de educación", "Horas por semana"),
+  Media = num(r[, "Media"], 1), Mediana = num(r[, "Mediana"]), Moda = num(r[, "Moda"]),
+  `Q1–Q3` = paste0(r[, "Q1"], "–", r[, "Q3"]),
+  `Mín–Máx (rango)` = paste0(r[, "Mín"], "–", r[, "Máx"], " (", r[, "Rango"], ")"),
+  RIC = num(r[, "RIC"]), DE = num(r[, "DE"], 1), CV = paste0(num(r[, "CV"], 1), "%"),
+  Asimetría = num(r[, "Asimetría"], 2),
+  `Atípicos` = c(num(at_edad["n"]), num(atipicos(datos$AÑOS_EDUC)["n"]), num(at_horas["n"])),
+  check.names = FALSE, row.names = NULL)
+tabla(tab, align = c("l", rep("c", 10))) %>% kable_styling(font_size = 17)
+```
+
+::: {.claves style="margin-top:6px; font-size:0.5em"}
+**Edad:** asimetría positiva (`r num(skewness(datos$EDAD), 2)`); `r num(at_edad["n"])` atípicos sobre `r num(at_edad["ls"], 1)` años. **Educación:** moda 9 (bachillerato), baja dispersión (CV `r num(resumen_cuant["CV", "AÑOS_EDUC"], 1)` %). **Horas:** `r pct(mean(datos$HORAS == 40))` declara exactamente 40 h; el RIC estrecho genera `r num(at_horas["n"])` atípicos (`r pct(at_horas["n"] / nrow(datos))`), jornadas reales que **se conservan**.
+:::
+
+::: notes
+El selector cambia la variable del histograma y del diagrama de caja; el cursor muestra la frecuencia de cada valor. Edad: mitad central entre 28 y 47 años; los atípicos son personas mayores que siguen trabajando. Años de educación: leve asimetría negativa, con una cola hacia los niveles bajos. Horas: 40 es la moda, la mediana y el primer cuartil; la media, 40,9, casi coincide con la mediana, pero el rango intercuartílico tan estrecho (40 a 45) marca como atípicas muchas jornadas parciales y largas, por eso conviene comparar también medianas.
+:::
+
+## [[05]{.num}Bivariado · relación central]{.etiqueta} La probabilidad de ingreso alto crece en cada nivel educativo {data-menu-title="5 · Educación × ingreso"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Proporción con ingreso >50K dentro de cada nivel educativo.
+:::
+::: {}
+**Por qué**
+Es la relación que responde la pregunta de investigación.
+:::
+::: {}
+**Cómo**
+Tabla de contingencia y proporción por fila como indicador.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-biv-contingencia
+#| ref-label: biv-contingencia
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`table()` cruza nivel × ingreso; `mean(INGRESO_ALTO)` por grupo da la proporción con >50K.
+
+[Resultado]{.g}
+`Veces_promedio` compara cada nivel con $P(>50K)$.
+:::
+:::
+
+::: {.column width="60%"}
+::: {.panel-tabset}
+### Barras al 100 %
+
+```{ojs}
+//| echo: false
+viewof poblacion = Inputs.radio(["Todos", "Mujer", "Hombre"], {value: "Todos", label: "Población"})
+```
+
+```{ojs}
+//| echo: false
+{
+  const datosPob = transpose(d_ing_nivel).filter(d => d.poblacion === poblacion);
+  const prom = transpose(d_prom).find(d => d.poblacion === poblacion).p;
+  const g = Plot.plot({
+    width: 880, height: 300, marginBottom: 60, marginLeft: 64, marginTop: 24, style: estilo,
+    x: {label: null, domain: niveles, tickFormat: d => corto2.get(d)},
+    y: {label: null, tickFormat: d => fmtP(d, 0), domain: [0, 1]},
+    color: {domain: ["<=50K", ">50K"], range: [paleta.bajo, paleta.alto]},
+    marks: [
+      Plot.barY(datosPob, Plot.stackY({x: "nivel", y: "p", fill: "ingreso", order: ["<=50K", ">50K"], reverse: true, inset: 3,
+        title: d => `${d.nivel} · ${d.ingreso}\n${fmtN(d.n)} personas (${fmtP(d.p)})`, tip: true})),
+      Plot.text(datosPob.filter(d => d.ingreso === ">50K"), {x: "nivel", y: d => d.p < 0.1 ? d.p + 0.045 : d.p / 2, text: d => fmtP(d.p), fill: d => d.p < 0.1 ? paleta.alto : "white", fontWeight: 800}),
+      Plot.ruleY([1 - prom], {stroke: paleta.tinta, strokeDasharray: "5,5", strokeWidth: 1.2}),
+      Plot.text([1 - prom], {x: () => niveles[5], y: d => d, text: () => `Promedio >50K: ${fmtP(prom)}`, dy: -10, dx: 50, textAnchor: "end", fill: paleta.tinta, fontWeight: 700})
+    ]
+  });
+  return html`<div>${leyenda([["Hasta USD 50.000", paleta.bajo], ["Más de USD 50.000", paleta.alto]])}${g}</div>`;
+}
+```
+
+### Mosaico
+
+```{ojs}
+//| echo: false
+html`<div>${leyenda([["Hasta USD 50.000", paleta.bajo], ["Más de USD 50.000", paleta.alto], ["Ancho = proporción de personas en el nivel", "transparent"]])}${Plot.plot({
+  width: 880, height: 330, marginTop: 34, marginLeft: 64, marginBottom: 20, style: estilo,
+  x: {axis: null}, y: {label: null, tickFormat: d => fmtP(d, 0)},
+  color: {domain: ["<=50K", ">50K"], range: [paleta.bajo, paleta.alto]},
+  marks: [
+    Plot.rect(transpose(d_mosaico), {x1: "x1", x2: "x2", y1: "y1", y2: "y2", fill: "ingreso", inset: 1.5,
+      title: d => `${d.nivel} · ${d.ingreso}\n${fmtN(d.n)} personas · ${fmtP(d.p)} del nivel`, tip: true}),
+    Plot.text(transpose(d_mosaico).filter(d => d.ingreso === ">50K"), {x: d => (d.x1 + d.x2) / 2, y: 1, text: d => mosaicoEtq.get(d.nivel), dy: -12, fontSize: 14, fontWeight: 700})
+  ]
+})}</div>`
+```
+
+### Indicador
+
+```{r}
+#| label: t-prop-nivel
+prop_nivel %>% transmute(`Nivel educativo` = NIVEL_EDUCATIVO, Personas = num(Personas),
+                         `Con >50K` = num(Con_alto), `% con >50K` = pct(Proporcion),
+                         `Veces el promedio` = num(Veces_promedio, 2)) %>%
+  tabla(align = c("l", "r", "r", "r", "r")) %>% row_spec(c(3, 6), bold = TRUE, background = resalte) %>%
+  kable_styling(font_size = 20)
+```
+
+### Contingencia
+
+```{r}
+#| label: t-contingencia
+addmargins(tab_cont) %>% as.data.frame.matrix() %>% mutate(across(everything(), num)) %>%
+  tibble::rownames_to_column("Nivel educativo") %>%
+  mutate(`Nivel educativo` = replace(`Nivel educativo`, n(), "Total")) %>% rename(Total = Sum) %>%
+  tabla(align = c("l", "r", "r", "r")) %>% row_spec(7, bold = TRUE, background = resalte2) %>%
+  kable_styling(font_size = 21)
+```
+:::
+
+::: {.claves}
+- **Escalonada y sin excepciones:** de `r pct(prop_nivel$Proporcion[1])` (primaria) a **`r pct(prop_nivel$Proporcion[6])`** (posgrado).
+- **Bachillerato** (`r pct(prop_nivel$Proporcion[3])`) sigue bajo el promedio; el **pregrado** marca el salto (`r pct(prop_nivel$Proporcion[5])`, `r num(prop_nivel$Veces_promedio[5], 1)` × el promedio).
+- **Posgrado:** único nivel donde el ingreso alto es **mayoría**.
+:::
+:::
+::::
+
+::: notes
+Secundaria incompleta: 6,2 %. El selector de población permite verificar que el patrón se repite en mujeres y hombres. El mosaico muestra a la vez el tamaño de cada grupo y su composición: el área terracota crece hacia la derecha, pero las columnas se estrechan porque hay menos personas en los niveles altos. Las pestañas Indicador y Contingencia contienen las cifras exactas.
+:::
+
+## [[05]{.num}Bivariado · control]{.etiqueta} El patrón se mantiene en hombres y en mujeres {data-menu-title="5 · Control por sexo"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Proporción con >50K por nivel educativo, separada por sexo.
+:::
+::: {}
+**Por qué**
+Descartar que la relación educación–ingreso sea un efecto aparente del sexo.
+:::
+::: {}
+**Cómo**
+Proporciones por sexo y por combinación nivel × sexo.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-biv-sexo
+#| ref-label: biv-sexo
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`group_by()` + `mean(INGRESO_ALTO)` en dos agrupaciones: sexo, y nivel × sexo.
+:::
+
+::: {.kpis}
+::: {.kpi}
+[`r pct(prop_sexo$Proporcion[prop_sexo$SEXO == "Hombre"])`]{.valor .pino}
+[hombres con >50K]{.rotulo}
+:::
+::: {.kpi}
+[`r pct(prop_sexo$Proporcion[prop_sexo$SEXO == "Mujer"])`]{.valor style="color:#7A4E70"}
+[mujeres con >50K]{.rotulo}
+:::
+:::
+:::
+
+::: {.column width="60%"}
+```{ojs}
+//| echo: false
+html`<div>${leyenda([["Mujer", paleta.mujer], ["Hombre", paleta.hombre]])}${Plot.plot({
+  width: 880, height: 400, marginBottom: 60, marginLeft: 64, marginTop: 30, style: estilo,
+  x: {label: null, domain: niveles, tickFormat: d => corto2.get(d), padding: 0.3},
+  y: {label: null, tickFormat: d => fmtP(d, 0), domain: [0, 0.8], grid: true},
+  color: {domain: ["Mujer", "Hombre"], range: [paleta.mujer, paleta.hombre]},
+  marks: [
+    Plot.line(transpose(d_sexo_nivel), {x: "nivel", y: "p", stroke: "sexo", strokeWidth: 3}),
+    Plot.dot(transpose(d_sexo_nivel), {x: "nivel", y: "p", fill: "sexo", r: 7, stroke: "#FAF6F0", strokeWidth: 2,
+      title: d => `${d.sexo} · ${d.nivel}\n${fmtP(d.p)} con >50K (n = ${fmtN(d.n)})`, tip: true}),
+    Plot.text(transpose(d_sexo_nivel), {x: "nivel", y: "p", text: d => fmtP(d.p, 0), dy: d => d.sexo === "Mujer" ? 22 : -20, fill: "sexo", fontWeight: 800})
+  ]
+})}</div>`
+```
+
+::: {.claves}
+- En **ambos sexos** la proporción sube con cada nivel: la relación **no es un efecto aparente del sexo**.
+- **Brecha de género:** una mujer con posgrado (**`r pct(d_sexo_nivel$p[d_sexo_nivel$sexo == "Mujer" & d_sexo_nivel$nivel == "Posgrado"])`**) tiene menos probabilidad de ingreso alto que un hombre con pregrado (**`r pct(d_sexo_nivel$p[d_sexo_nivel$sexo == "Hombre" & d_sexo_nivel$nivel == "Pregrado universitario"])`**).
+:::
+:::
+::::
+
+::: notes
+Esta comparación funciona como control: si el efecto de la educación desapareciera al separar por sexo, la relación general sería engañosa. Las dos curvas crecen en todos los niveles. Las mujeres necesitan más educación para alcanzar probabilidades similares, reflejo de la brecha de género de la época.
+:::
+
+## [[05]{.num}Bivariado · horas]{.etiqueta} Trabajar más horas no explica la ventaja educativa {data-menu-title="5 · Horas trabajadas"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Horas semanales por grupo de ingreso y por nivel educativo.
+:::
+::: {}
+**Por qué**
+Evaluar si la ventaja de ingreso se explica solo por trabajar más.
+:::
+::: {}
+**Cómo**
+Media, mediana, % > 40 h e intervalo de confianza del 95 % de la media.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-biv-horas
+#| ref-label: biv-horas
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`horas_resumen()` resume las horas para cualquier agrupación.
+
+[IC 95 %]{.g}
+Media ± 1,96 · DE / √n: rango plausible para la media de cada grupo.
+:::
+:::
+
+::: {.column width="60%"}
+::: {.panel-tabset}
+### Gráfico
+
+```{ojs}
+//| echo: false
+viewof agrupacion = Inputs.radio(["Ingreso anual", "Nivel educativo"], {value: "Nivel educativo", label: "Agrupar por"})
+```
+
+```{ojs}
+//| echo: false
+{
+  const d = transpose(d_horas).filter(r => r.agrupacion === agrupacion);
+  return Plot.plot({
+    width: 880, height: 300, marginBottom: 60, marginLeft: 64, marginTop: 24, style: estilo,
+    x: {label: null, domain: d.map(r => r.grupo), tickFormat: g => corto2.get(g) ?? g, padding: 0.4},
+    y: {label: "Horas por semana", domain: [34, 48], grid: true},
+    marks: [
+      Plot.ruleY([40], {stroke: paleta.suave, strokeDasharray: "5,5"}),
+      Plot.text([40], {x: () => d[0].grupo, y: d => d, text: () => "Jornada de 40 h", dy: -10, dx: -30, textAnchor: "start", fill: paleta.suave, fontWeight: 600}),
+      Plot.ruleX(d, {x: "grupo", y1: "ic_inf", y2: "ic_sup", stroke: paleta.tinta, strokeWidth: 3}),
+      Plot.dot(d, {x: "grupo", y: "media", r: 10, fill: agrupacion === "Ingreso anual" ? (r => r.grupo === ">50K" ? paleta.alto : paleta.bajo) : paleta.pino, stroke: "#FAF6F0", strokeWidth: 2,
+        title: r => `${r.grupo}\nMedia: ${fmtN(r.media, 1)} h · Mediana: ${fmtN(r.mediana)} h\nIC 95 %: ${fmtN(r.ic_inf, 1)} – ${fmtN(r.ic_sup, 1)}\nMás de 40 h: ${fmtP(r.mas40)} · n = ${fmtN(r.n)}`, tip: true}),
+      Plot.text(d, {x: "grupo", y: "media", text: r => fmtN(r.media, 1), dx: 28, fontWeight: 800})
+    ]
+  });
+}
+```
+
+### Tabla
+
+```{r}
+#| label: t-horas
+bind_rows(horas_ingreso %>% transmute(Grupo = as.character(INGRESO), n, Media, Mediana, Mas_40),
+          horas_nivel %>% transmute(Grupo = as.character(NIVEL_EDUCATIVO), n, Media, Mediana, Mas_40)) %>%
+  transmute(Grupo, n = num(n), Media = num(Media, 1), Mediana, `% > 40 h` = pct(Mas_40)) %>%
+  tabla(align = c("l", "r", "r", "r", "r")) %>% pack_rows("Ingreso", 1, 2) %>%
+  pack_rows("Nivel educativo", 3, 8) %>% kable_styling(font_size = 18)
+```
+:::
+
+::: {.claves}
+- Con ingreso alto: **+`r num(horas_ingreso$Media[2] - horas_ingreso$Media[1], 1)` h** semanales (`r num(horas_ingreso$Media[2], 1)` vs. `r num(horas_ingreso$Media[1], 1)`); el `r pct(horas_ingreso$Mas_40[2])` supera las 40 h, frente al `r pct(horas_ingreso$Mas_40[1])`.
+- De bachillerato a posgrado, las horas suben **`r pct(horas_nivel$Media[6] / horas_nivel$Media[3] - 1, 0)`**, pero la proporción con >50K se multiplica por **`r num(prop_nivel$Proporcion[6] / prop_nivel$Proporcion[3], 1)`**.
+:::
+:::
+::::
+
+::: notes
+La mediana es 40 horas en ambos grupos de ingreso; el grupo de menor ingreso concentra las jornadas parciales. Por nivel, la media tiende a subir con la educación: mínimo en secundaria incompleta (36,2 h, probablemente por empleos de medio tiempo de personas jóvenes) y máximo en posgrado (45,3 h). Las horas acompañan al ingreso alto, pero no explican la ventaja de los más educados. El eje empieza en 34 horas para distinguir las diferencias; por eso se usan puntos con intervalos y no barras.
+:::
+
+## [[05]{.num}Bivariado · correlación]{.etiqueta} La educación es la variable numérica más asociada al ingreso alto {data-menu-title="5 · Correlaciones"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Relación lineal entre edad, años de educación, horas e ingreso alto.
+:::
+::: {}
+**Por qué**
+Comparar qué variable numérica se asocia más con el ingreso alto.
+:::
+::: {}
+**Cómo**
+Coeficiente de Pearson; con el ingreso 0/1 es la correlación punto-biserial.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="42%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-biv-correlacion
+#| ref-label: biv-correlacion
+#| echo: true
+#| eval: false
+```
+
+```{ojs}
+//| echo: false
+{
+  const orden = ["Edad", "Años de educación", "Horas", "Ingreso >50K (0/1)"];
+  return Plot.plot({
+    width: 600, height: 390, marginLeft: 160, marginBottom: 80, style: {...estilo, fontSize: "14px"},
+    x: {domain: orden, label: null, tickRotate: -18}, y: {domain: orden, label: null},
+    color: {type: "linear", domain: [0, 1], range: ["#FAF6F0", "#B5543A"]},
+    marks: [
+      Plot.cell(transpose(d_cor), {x: "x", y: "y", fill: "r", inset: 2, rx: 6,
+        title: d => `${d.y} ↔ ${d.x}\nr = ${fmtN(d.r, 3)}`, tip: true}),
+      Plot.text(transpose(d_cor), {x: "x", y: "y", text: d => fmtN(d.r, 2), fill: d => d.r > 0.6 ? "white" : paleta.tinta, fontWeight: 800, fontSize: 16})
+    ]
+  });
+}
+```
+:::
+
+::: {.column width="58%"}
+```{r}
+#| label: t-correlaciones
+fuerza <- function(r) as.character(cut(abs(r), c(-Inf, .1, .3, .5, .7, Inf),
+                          labels = c("Prácticamente nula", "Débil", "Moderada", "Fuerte", "Muy fuerte")))
+pares <- data.frame(
+  Par = c("Años de educación ↔ ingreso alto", "Edad ↔ ingreso alto", "Horas ↔ ingreso alto",
+          "Años de educación ↔ horas", "Edad ↔ horas", "Edad ↔ años de educación"),
+  r = c(mat_cor["AÑOS_EDUC", "INGRESO_ALTO"], mat_cor["EDAD", "INGRESO_ALTO"],
+        mat_cor["HORAS", "INGRESO_ALTO"], mat_cor["AÑOS_EDUC", "HORAS"],
+        mat_cor["EDAD", "HORAS"], mat_cor["EDAD", "AÑOS_EDUC"]))
+pares$Fuerza <- paste(fuerza(pares$r), ifelse(pares$r > 0, "positiva", "negativa"))
+pares$Lectura <- c("Más educación, mayor probabilidad de ingreso alto",
+                   "Mayor edad (experiencia), más ingreso alto",
+                   "Más horas, más ingreso alto",
+                   "Ligera tendencia a más horas con más educación",
+                   "Relación casi inexistente",
+                   "Prácticamente independientes")
+pares$r <- num(pares$r, 3)
+tabla(pares, align = c("l", "c", "l", "l")) %>% row_spec(1, bold = TRUE, background = resalte) %>%
+  kable_styling(font_size = 20)
+```
+
+::: {.claves}
+- **Años de educación** → r = **`r num(mat_cor["AÑOS_EDUC", "INGRESO_ALTO"], 3)`**, por encima de edad (`r num(mat_cor["EDAD", "INGRESO_ALTO"], 3)`) y horas (`r num(mat_cor["HORAS", "INGRESO_ALTO"], 3)`).
+- Ningún coeficiente es fuerte: el ingreso dicotómico depende de **muchos factores**. Las explicativas casi no se correlacionan entre sí → **información distinta**.
+:::
+:::
+::::
+
+::: notes
+La correlación de Pearson mide relación lineal. Al codificar el ingreso como 0 y 1, el coeficiente equivale a la correlación punto-biserial. Clasificación usada: menos de 0,1 prácticamente nula; de 0,1 a 0,3 débil; de 0,3 a 0,5 moderada.
+:::
+
+## [[05]{.num}Probabilidad · marginales y conjuntas]{.etiqueta} Las conjuntas dependen del tamaño de cada grupo {data-menu-title="5 · Marginales y conjuntas"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Probabilidad de cada evento y de cada combinación nivel–ingreso.
+:::
+::: {}
+**Por qué**
+Son la base de la condicional, de Bayes y de la independencia.
+:::
+::: {}
+**Cómo**
+Enfoque frecuentista: con `r num(nrow(datos))` personas, frecuencia relativa = probabilidad.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+::: {.eventos}
+**$A$**: la persona gana más de USD 50.000.<br>
+**$B_1, \dots, B_6$**: pertenece al nivel educativo $i$ — eventos **mutuamente excluyentes y exhaustivos** ($B_3$ = Bachillerato, $B_6$ = Posgrado).
+:::
+
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-prob-marginales
+#| ref-label: prob-marginales
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Función]{.g}
+`prop.table()` divide cada frecuencia entre el total.
+:::
+:::
+
+::: {.column width="60%"}
+```{r}
+#| label: t-conjuntas
+addmargins(conj) %>% as.data.frame.matrix() %>%
+  mutate(across(everything(), \(x) num(x, 4))) %>%
+  tibble::rownames_to_column("Nivel educativo (Bᵢ)") %>%
+  mutate(`Nivel educativo (Bᵢ)` = replace(`Nivel educativo (Bᵢ)`, n(), "Total")) %>%
+  rename(`P(Bᵢ ∩ ≤50K)` = `<=50K`, `P(Bᵢ ∩ >50K)` = `>50K`, `P(Bᵢ)` = Sum) %>%
+  tabla("Conjuntas (celdas) y marginales (totales)", align = c("l", "r", "r", "r")) %>%
+  row_spec(7, bold = TRUE, background = resalte2) %>% column_spec(4, bold = TRUE) %>%
+  row_spec(c(3, 6), background = resalte) %>% kable_styling(font_size = 21)
+```
+
+::: {.claves}
+- $P(\text{Posgrado} \cap >50K) = `r mnum(conj["Posgrado", ">50K"], 4)`$ ≈ $P(\text{Bachillerato} \cap >50K) = `r mnum(conj["Bachillerato", ">50K"], 4)`$, aunque hay **`r num(p_B["Bachillerato"] / p_B["Posgrado"], 1)` veces más** bachilleres.
+- Un grupo grande con baja proporción iguala a uno pequeño con alta proporción → **para comparar niveles se necesita la condicional**.
+:::
+:::
+::::
+
+::: notes
+Las celdas son probabilidades conjuntas; la última columna y la última fila son probabilidades marginales: P(A) = 0,2480 y P(Posgrado) = 0,0850. La comparación de las dos filas resaltadas motiva el paso a la probabilidad condicional.
+:::
+
+## [[05]{.num}Probabilidad condicional]{.etiqueta} Con posgrado, la probabilidad es `r num(riesgo_relativo, 1)` veces la del bachillerato {data-menu-title="5 · Probabilidad condicional"}
+
+::: {.ruta}
+::: {}
+**Qué**
+$P(>50K \mid \text{nivel})$ y la comparación posgrado–bachillerato.
+:::
+::: {}
+**Por qué**
+Elimina el efecto del tamaño de los grupos y responde la pregunta.
+:::
+::: {}
+**Cómo**
+$P(A \mid B_i) = P(A \cap B_i) / P(B_i)$; diferencia, riesgo relativo y odds.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-prob-condicional
+#| ref-label: prob-condicional
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Riesgo relativo]{.g}
+Cociente de las dos probabilidades condicionales.
+
+[Odds]{.g}
+$p / (1 - p)$: personas con ingreso alto por cada una sin él.
+:::
+
+```{r}
+#| label: t-comparacion
+tabla(data.frame(
+  Indicador = c("P(>50K | Posgrado)", "P(>50K | Bachillerato)", "Diferencia",
+                "Riesgo relativo", "Odds posgrado / bachillerato", "Razón de odds"),
+  Valor = c(num(p_pos, 4), num(p_bach, 4), num(p_pos - p_bach, 4), num(riesgo_relativo, 2),
+            paste0(num(odds(p_pos), 2), " / ", num(odds(p_bach), 2)), num(razon_odds, 2))),
+  align = c("l", "r")) %>% row_spec(c(1, 2, 4), bold = TRUE) %>% kable_styling(font_size = 19)
+```
+:::
+
+::: {.column width="60%"}
+```{ojs}
+//| echo: false
+Plot.plot({
+  width: 880, height: 330, marginBottom: 60, marginLeft: 64, marginTop: 30, style: estilo,
+  x: {label: null, domain: niveles, tickFormat: d => corto2.get(d), padding: 0.5},
+  y: {label: "P(>50K | nivel)", domain: [0, 0.75], grid: true, tickFormat: d => fmtN(d, 1)},
+  marks: [
+    Plot.ruleY([p_A], {stroke: paleta.tinta, strokeDasharray: "5,5"}),
+    Plot.text([p_A], {x: () => niveles[0], y: d => d, text: () => `P(>50K) = ${fmtN(p_A, 3)}`, dy: -11, dx: -30, textAnchor: "start", fill: paleta.tinta, fontWeight: 700}),
+    Plot.ruleX(transpose(d_cond), {x: "nivel", y1: 0, y2: "p", stroke: paleta.arena, strokeWidth: 4}),
+    Plot.dot(transpose(d_cond), {x: "nivel", y: "p", r: 12, fill: d => d.p > p_A ? paleta.alto : paleta.bajo, stroke: "#FAF6F0", strokeWidth: 2,
+      title: d => `${d.nivel}\nP(>50K | nivel) = ${fmtN(d.p, 4)}\nP(nivel ∩ >50K) = ${fmtN(d.conj, 4)}\nP(nivel) = ${fmtN(d.pb, 4)}`, tip: true}),
+    Plot.text(transpose(d_cond), {x: "nivel", y: "p", text: d => fmtN(d.p, 3), dy: -24, fontWeight: 800})
+  ]
+})
+```
+
+::: {.claves}
+- Rango: **`r num(min(p_cond), 3)`** (primaria) → **`r num(max(p_cond), 3)`** (posgrado); solo pregrado y posgrado superan $P(>50K)$.
+- Posgrado **`r pct(p_pos)`** vs. bachillerato **`r pct(p_bach)`**: **`r num(100 * (p_pos - p_bach), 1)` puntos** de diferencia; riesgo relativo **`r num(riesgo_relativo, 1)`**; razón de odds **`r num(razon_odds, 1)`**.
+- **El nivel educativo se asocia con un aumento muy importante de la probabilidad de tener ingresos altos.**
+:::
+:::
+::::
+
+::: notes
+Odds con posgrado: 1,64 personas con ingreso alto por cada persona sin él; con bachillerato, 0,20. La razón de odds es mayor que el riesgo relativo porque la probabilidad con posgrado es alta. Este es el resultado más directo para la pregunta de investigación.
+:::
+
+## [[05]{.num}Teorema de Bayes]{.etiqueta} Entre quienes ganan más de USD 50.000, el posgrado pasa de `r pct(p_B["Posgrado"])` a `r pct(bayes["Posgrado"])` {data-menu-title="5 · Teorema de Bayes"}
+
+::: {.ruta}
+::: {}
+**Qué**
+Si alguien gana >50K, ¿qué tan probable es que tenga posgrado?
+:::
+::: {}
+**Por qué**
+Invierte la condicional y evita confundir $P(A \mid B)$ con $P(B \mid A)$.
+:::
+::: {}
+**Cómo**
+Probabilidad total para $P(A)$, teorema de Bayes y verificación con los datos.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-prob-bayes
+#| ref-label: prob-bayes
+#| echo: true
+#| eval: false
+```
+
+::: {.formula}
+$$P(A) = \sum_{i=1}^{6} P(A \mid B_i)\,P(B_i) = `r mnum(prob_total, 4)`$$
+$$P(B_6 \mid A) = \frac{`r mnum(p_pos, 4)` \times `r mnum(p_B["Posgrado"], 4)`}{`r mnum(prob_total, 4)`} = `r mnum(bayes["Posgrado"], 4)`$$
+:::
+
+::: {.guia}
+[Verificación]{.g}
+Proporción observada de posgraduados entre quienes ganan >50K: **`r num(p_pos_dado_A, 4)`**.
+:::
+:::
+
+::: {.column width="60%"}
+```{ojs}
+//| echo: false
+html`<div>${leyenda([["A priori: P(nivel)", paleta.bajo], ["A posteriori: P(nivel | >50K)", paleta.alto]])}${Plot.plot({
+  width: 880, height: 360, marginBottom: 60, marginLeft: 64, marginTop: 30, style: estilo,
+  fx: {label: null, domain: niveles, tickFormat: d => corto2.get(d), padding: 0.18},
+  x: {axis: null, domain: ["A priori: P(nivel)", "A posteriori: P(nivel | >50K)"]},
+  y: {label: null, tickFormat: d => fmtP(d, 0), grid: true},
+  color: {domain: ["A priori: P(nivel)", "A posteriori: P(nivel | >50K)"], range: [paleta.bajo, paleta.alto]},
+  marks: [
+    Plot.barY(transpose(d_bayes), {fx: "nivel", x: "tipo", y: "p", fill: "tipo", rx: 3,
+      title: d => `${d.nivel}\n${d.tipo} = ${fmtN(d.p, 4)}`, tip: true}),
+    Plot.text(transpose(d_bayes), {fx: "nivel", x: "tipo", y: "p", text: d => fmtP(d.p), dy: -9, fontSize: 13, fontWeight: 700}),
+    Plot.ruleY([0], {stroke: paleta.tinta})
+  ]
+})}</div>`
+```
+
+::: {.claves}
+- Saber que alguien gana >50K multiplica por **`r num(bayes["Posgrado"] / p_B["Posgrado"], 1)`** la probabilidad de que tenga posgrado.
+- Aun así, **`r pct(1 - bayes["Posgrado"])`** de quienes ganan >50K **no** tiene posgrado: $P(A \mid B_6)$ es alta, pero $P(B_6 \mid A)$ es moderada porque los posgraduados son pocos.
+:::
+:::
+::::
+
+::: notes
+La ley de probabilidad total reconstruye P(A) a partir de las condicionales y las marginales y coincide con la proporción observada, 0,248. Pregrado y posgrado ganan peso en el grupo de ingreso alto; los niveles bajos casi desaparecen. Confundir P(A | B) con P(B | A) es un error frecuente que el teorema de Bayes ayuda a evitar.
+:::
+
+## [[05]{.num}Independencia]{.etiqueta} Educación e ingreso no son independientes {data-menu-title="5 · Independencia"}
+
+::: {.ruta}
+::: {}
+**Qué**
+¿Ocurre el ingreso alto con la misma probabilidad en todos los niveles?
+:::
+::: {}
+**Por qué**
+Si fueran independientes, la educación no informaría sobre el ingreso.
+:::
+::: {}
+**Cómo**
+$P(A \cap B_i)$ frente a $P(A)\,P(B_i)$; χ² y V de Cramér como comprobación.
+:::
+:::
+
+:::: {.columns}
+::: {.column width="40%"}
+[Código R]{.titulo-codigo}
+
+```{r}
+#| label: ver-prob-independencia
+#| ref-label: prob-independencia
+#| echo: true
+#| eval: false
+```
+
+::: {.guia}
+[Definición]{.g}
+Independencia ⇔ $P(A \cap B) = P(A)\,P(B)$ ⇔ $P(A \mid B) = P(A)$.
+
+[χ² y V]{.g}
+`chisq.test()` contrasta la tabla observada con la esperada; la V de Cramér mide la intensidad (0 a 1).
+:::
+
+::: {.kpis}
+::: {.kpi}
+[`r num(chi$statistic, 1)`]{.valor}
+[χ² · gl = `r chi$parameter` · p < 0,001]{.rotulo}
+:::
+::: {.kpi}
+[`r num(v_cramer, 3)`]{.valor .acento}
+[V de Cramér · moderada]{.rotulo}
+:::
+:::
+:::
+
+::: {.column width="60%"}
+```{r}
+#| label: t-independencia
+data.frame(`Nivel educativo` = names(p_B),
+           `P(A ∩ Bᵢ) observada` = num(conj[, ">50K"], 4),
+           `P(A)·P(Bᵢ) esperada` = num(esperada_indep, 4),
+           `P(A | Bᵢ)` = num(p_cond, 4),
+           `¿= P(A)?` = ifelse(abs(p_cond - p_A) < 0.01, "Sí", "No"),
+           check.names = FALSE, row.names = NULL) %>%
+  tabla(align = c("l", "r", "r", "r", "c")) %>% kable_styling(font_size = 21)
+```
+
+::: {.claves}
+- **Ningún** nivel cumple la igualdad: en los niveles bajos $P(A \mid B_i)$ queda muy por debajo de $P(A) = `r mnum(p_A)`$; en pregrado y posgrado, muy por encima.
+- χ² con **p < 0,001**: diferencias así serían prácticamente imposibles por azar. **V = `r num(v_cramer, 3)`**: asociación **moderada**.
+:::
+:::
+::::
+
+::: notes
+La prueba chi-cuadrado complementa la comprobación descriptiva basada en la definición de independencia. La V de Cramér se calcula como la raíz de chi-cuadrado dividido entre el producto del tamaño de la muestra y el mínimo de filas o columnas menos uno.
+:::
+
+## [[06]{.num}Presentación de resultados]{.etiqueta} Sí: la probabilidad de ingreso alto aumenta con la educación {#sec-resultados .resultados-slide data-menu-title="6 · Respuesta y hallazgos"}
+
+::: {.respuesta}
+En la base *Adult* (EE. UU., 1994), la probabilidad de ganar más de USD 50.000 **aumenta de manera sostenida con el nivel educativo**; la relación se mantiene en hombres y mujeres y **no se explica solo por las horas trabajadas**.
+:::
+
+::: {.kpis}
+::: {.kpi}
+[`r pct(prop_nivel$Proporcion[1])` → `r pct(prop_nivel$Proporcion[6])`]{.valor .acento}
+[P(>50K) de primaria o menos a posgrado]{.rotulo}
+:::
+::: {.kpi}
+[`r num(riesgo_relativo, 1)` ×]{.valor}
+[posgrado frente a bachillerato (riesgo relativo)]{.rotulo}
+:::
+::: {.kpi}
+[`r pct(bayes["Posgrado"])`]{.valor .pino}
+[P(Posgrado | >50K), frente a `r pct(p_B["Posgrado"])` a priori]{.rotulo}
+:::
+::: {.kpi}
+[`r num(v_cramer, 3)`]{.valor}
+[V de Cramér · asociación moderada (χ², p < 0,001)]{.rotulo}
+:::
+:::
+
+```{r}
+#| label: t-hallazgos
+tabla(data.frame(
+  Análisis = c("Univariado", "Univariado", "Bivariado", "Bivariado", "Probabilístico", "Probabilístico"),
+  Hallazgo = c(
+    paste0("Solo ", pct(p_A), " gana más de USD 50.000; solo ", pct(p_B["Posgrado"]), " tiene posgrado"),
+    paste0("Horas concentradas en 40 h (", pct(mean(datos$HORAS == 40)), "); edad con asimetría positiva"),
+    "La proporción con ingreso alto aumenta en cada nivel educativo, sin excepciones, en ambos sexos",
+    paste0("Con >50K se trabajan ", num(horas_ingreso$Media[2] - horas_ingreso$Media[1], 1), " h más, pero las horas no explican la ventaja educativa"),
+    paste0("P(>50K | Posgrado) = ", num(p_pos, 3), " frente a P(>50K | Bachillerato) = ", num(p_bach, 3)),
+    "Educación e ingreso no son independientes; Bayes muestra que la mayoría con >50K no tiene posgrado"),
+  check.names = FALSE), align = c("l", "l")) %>%
+  collapse_rows(1, valign = "middle") %>% kable_styling(font_size = 23)
+```
+
+::: notes
+La respuesta integra los tres niveles de análisis: la proporción por nivel educativo (bivariado), la probabilidad condicional y Bayes (probabilístico) y los controles por sexo y horas trabajadas. Hombres con ingreso alto: 31,3 %; mujeres: 11,4 %.
+:::
+
+## [[06]{.num}Presentación de resultados]{.etiqueta} Alcance de las conclusiones {.limites-slide data-menu-title="6 · Limitaciones y conclusión"}
+
+::: {.limitaciones}
+::: {.limitacion}
+[Asociación no es causalidad]{.titulo-caja}
+Quienes tienen más educación pueden diferir en ocupación, experiencia, origen familiar o red de contactos, factores que también influyen en el ingreso.
+:::
+::: {.limitacion}
+[Ingreso dicotómico]{.titulo-caja}
+Solo se sabe si el ingreso supera USD 50.000: no es posible medir *cuánto* más gana cada nivel ni correlacionar con el ingreso real.
+:::
+::: {.limitacion}
+[Contexto temporal y geográfico]{.titulo-caja}
+Estados Unidos, 1994: los valores monetarios, el mercado laboral y el sistema educativo han cambiado.
+:::
+::: {.limitacion}
+[Muestra sin ponderar]{.titulo-caja}
+Sin los pesos `fnlwgt`, los resultados describen la muestra y no estiman totales poblacionales exactos.
+:::
+:::
+
+::: {.conclusion}
+**Conclusión.** En el censo de 1994, cada nivel educativo adicional se asoció con una mayor probabilidad de tener ingresos altos, y el posgrado fue el único nivel en el que el ingreso alto fue lo más común.
+:::
+
+::: notes
+Las limitaciones retoman las advertencias de la contextualización y delimitan el alcance de la conclusión: los resultados describen una asociación en un contexto específico.
+:::
+
+## Referencias {data-menu-title="Referencias"}
+
+::: {.referencias}
+### Fuente de los datos
+
+Becker, B., & Kohavi, R. (1996). *Adult* [Conjunto de datos]. UCI Machine Learning Repository. https://doi.org/10.24432/C5XW20
+
+Kohavi, R. (1996). Scaling up the accuracy of naive-Bayes classifiers: A decision-tree hybrid. En *Proceedings of the Second International Conference on Knowledge Discovery and Data Mining* (pp. 202–207). AAAI Press.
+
+U.S. Census Bureau. (1995). *Income, poverty, and valuation of noncash benefits: 1994* (Current Population Reports P60-189). U.S. Government Printing Office.
+
+### Software y paquetes
+
+R Core Team. (2025). *R: A language and environment for statistical computing* (Versión 4.5.2) [Software]. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Wickham, H., Hester, J., & Bryan, J. (2026). *readr: Read rectangular text data* (Versión 2.2.0) [Paquete de R]. https://doi.org/10.32614/CRAN.package.readr
+
+Wickham, H., François, R., Henry, L., Müller, K., & Vaughan, D. (2026). *dplyr: A grammar of data manipulation* (Versión 1.2.1) [Paquete de R]. https://doi.org/10.32614/CRAN.package.dplyr
+
+Wickham, H., Vaughan, D., & Girlich, M. (2025). *tidyr: Tidy messy data* (Versión 1.3.2) [Paquete de R]. https://doi.org/10.32614/CRAN.package.tidyr
+
+Xie, Y. (2025). *knitr: A general-purpose package for dynamic report generation in R* (Versión 1.51) [Paquete de R]. https://yihui.org/knitr/
+
+Zhu, H. (2024). *kableExtra: Construct complex table with 'kable' and pipe syntax* (Versión 1.4.0) [Paquete de R]. https://doi.org/10.32614/CRAN.package.kableExtra
+
+Komsta, L., & Novomestky, F. (2022). *moments: Moments, cumulants, skewness, kurtosis and related tests* (Versión 0.14.1) [Paquete de R]. https://doi.org/10.32614/CRAN.package.moments
+
+Quarto (Versión 1.9) [Software] y Observable Plot (Versión 0.6.16) [Biblioteca de JavaScript], utilizados para construir esta presentación.
+:::
+
+::: notes
+Referencias en formato APA, séptima edición. Las versiones de R y de los paquetes corresponden a las instaladas al generar la presentación.
+:::
+
+## {.cierre-slide data-menu-title="Autoría"}
+
+::: {.cierre}
+::: {.gracias}
+Gracias<em>.</em>
+:::
+
+::: {.derechos}
+[© 2026 Laura Sofia Valencia. Todos los derechos reservados.]{.marca}
+
+El contenido académico, el análisis estadístico, el diseño y el desarrollo de esta presentación son de autoría de **Laura Sofia Valencia**.
+
+No está permitida la reproducción, distribución o copia total o parcial de este trabajo sin autorización previa y por escrito de la autora.
+
+[Los datos provienen de la base pública *Adult* (UCI, licencia CC BY 4.0) y pertenecen a sus autores; este aviso se refiere al análisis, la redacción, el diseño y el código de la presentación.]{.texto-xs}
+:::
+:::
